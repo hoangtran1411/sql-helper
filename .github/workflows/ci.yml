@@ -17,7 +17,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
           cache: true
 
       - name: Run golangci-lint
@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        go-version: ["1.23"]
+        go-version: ["1.24"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -48,11 +48,11 @@ jobs:
 
       - name: Run tests with coverage (Unix)
         if: runner.os != 'Windows'
-        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./internal/...
+        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Run tests with coverage (Windows)
         if: runner.os == 'Windows'
-        run: go test -v "-coverprofile=coverage.out" -covermode=atomic ./internal/...
+        run: go test -v "-coverprofile=coverage.out" -covermode=atomic ./...
 
       - name: Check coverage
         if: matrix.os == 'ubuntu-latest'
@@ -93,7 +93,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
           cache: true
 
       - name: Setup Node.js
