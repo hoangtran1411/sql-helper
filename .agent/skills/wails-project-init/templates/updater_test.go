@@ -1,7 +1,21 @@
+// =============================================================================
+// Tests for Auto-Update Module
+// =============================================================================
+// These tests cover:
+// - Semantic version comparison (CompareVersions, parseVersion)
+// - UpdateInfo struct validation
+// - GitHubRelease struct validation
+// - Configuration validation
+//
+// NOTE: Tests that require network (CheckForUpdate) are skipped.
+// Integration testing should be done manually.
+// =============================================================================
+
 package main
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
@@ -126,7 +140,14 @@ func TestGitHubReleaseStruct(t *testing.T) {
 }
 
 func TestGitHubConstants(t *testing.T) {
-	// Update these assertions when using the template
+	// Skip if constants are still template placeholders
+	if strings.HasPrefix(GitHubOwner, "{{") {
+		t.Skip("GitHubOwner is still a template placeholder - update before testing")
+	}
+	if strings.HasPrefix(GitHubRepo, "{{") {
+		t.Skip("GitHubRepo is still a template placeholder - update before testing")
+	}
+
 	if GitHubOwner == "" {
 		t.Error("GitHubOwner should not be empty")
 	}
@@ -153,7 +174,6 @@ func TestGetCurrentVersion(t *testing.T) {
 }
 
 func TestCompareVersionsEdgeCases(t *testing.T) {
-	// Test edge cases
 	tests := []struct {
 		name     string
 		v1       string
