@@ -1,0 +1,21 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "sql-helper",
+  "outputfilename": "sql-helper",
+  "frontend:install": "",
+  "frontend:build": "",
+  "frontend:dev:watcher": "",
+  "frontend:dev:serverUrl": "",
+  "wailsjsdir": "./frontend",
+  "author": {
+    "name": "hoangtran1411",
+    "email": "hoangtran1411@gmail.com"
+  },
+  "info": {
+    "companyName": "SQL Helper",
+    "productName": "SQL Helper",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2026",
+    "comments": "A desktop utility to convert Excel data to SQL INSERT statements"
+  }
+}
