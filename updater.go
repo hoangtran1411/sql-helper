@@ -122,6 +122,7 @@ func parseVersion(v string) [3]int {
 
 	for i := 0; i < len(parts) && i < 3; i++ {
 		// Parse integer, ignore errors (defaults to 0)
+		//nolint:errcheck // intentionally ignore parse errors, default to 0
 		fmt.Sscanf(parts[i], "%d", &result[i])
 	}
 	return result
@@ -138,7 +139,10 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to get executable path: %w", err)
 	}
-	exePath, _ = filepath.Abs(exePath)
+	exePath, err = filepath.Abs(exePath)
+	if err != nil {
+		return false, fmt.Errorf("failed to get absolute path: %w", err)
+	}
 
 	// Create temp file for download
 	tempDir := os.TempDir()
