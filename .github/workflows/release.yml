@@ -9,21 +9,10 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build Release
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            platform: linux/amd64
-            artifact_name: sql-helper-linux-amd64
-          - os: windows-latest
-            platform: windows/amd64
-            artifact_name: sql-helper-windows-amd64
-          - os: macos-latest
-            platform: darwin/universal
-            artifact_name: sql-helper-darwin-universal
+  release:
+    name: Build and Release
+    runs-on: windows-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,6 +21,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.24"
+          check-latest: true
           cache: true
 
       - name: Setup Node.js
@@ -39,71 +29,27 @@ jobs:
         with:
           node-version: "20"
 
-      # SUGGESTION: Changed @latest to @v2.9.2 (or your specific version) for safety
+      - name: Run Unit Tests
+        run: go test -v ./internal/...
+
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.9.2
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-latest'
+      - name: Build Windows EXE
+        # Build with version injection from git tag
+        run: wails build -platform windows/amd64 -ldflags "-s -w -X main.CurrentVersion=${{ github.ref_name }}"
+
+      - name: Rename Output
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
-
-      # FIX IS HERE: Changed tag to 'webkit2_41'
-      - name: Build (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: wails build -platform ${{ matrix.platform }} -tags webkit2_41 -ldflags "-s -w -X main.CurrentVersion=${{ github.ref_name }}"
-
-      - name: Build (non-Linux)
-        if: matrix.os != 'ubuntu-latest'
-        run: wails build -platform ${{ matrix.platform }} -ldflags "-s -w -X main.CurrentVersion=${{ github.ref_name }}"
-
-      - name: Compress artifacts (Unix)
-        if: matrix.os != 'windows-latest'
-        run: |
-          cd build/bin
-          tar -czvf ../../${{ matrix.artifact_name }}.tar.gz *
-
-      - name: Compress artifacts (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          cd build/bin
-          Compress-Archive -Path * -DestinationPath ../../${{ matrix.artifact_name }}.zip
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact_name }}
-          path: |
-            ${{ matrix.artifact_name }}.tar.gz
-            ${{ matrix.artifact_name }}.zip
-          if-no-files-found: warn
-
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      # Helpful for debugging (shows where files are)
-      - name: Display structure of downloaded files
-        run: ls -R artifacts
+          Move-Item build/bin/sql-helper.exe build/bin/sql-helper-windows-amd64.exe
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
+          files: build/bin/sql-helper-windows-amd64.exe
+          generate_release_notes: true
           draft: false
           prerelease: false
-          generate_release_notes: true
-          files: |
-            artifacts/**/*.tar.gz
-            artifacts/**/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

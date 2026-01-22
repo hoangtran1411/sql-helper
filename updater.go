@@ -75,10 +75,10 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	info.LatestVer = release.TagName
 	info.ReleaseURL = release.HTMLURL
 
-	// Find Windows zip asset (our release packages as .zip)
+	// Find Windows exe asset (direct EXE release)
 	for _, asset := range release.Assets {
 		assetName := strings.ToLower(asset.Name)
-		if strings.Contains(assetName, "windows") && strings.HasSuffix(assetName, ".zip") {
+		if strings.Contains(assetName, "windows") && strings.HasSuffix(assetName, ".exe") {
 			info.DownloadURL = asset.BrowserDownloadURL
 			break
 		}
@@ -128,7 +128,8 @@ func parseVersion(v string) [3]int {
 	return result
 }
 
-// PerformUpdate downloads and installs the new version
+// PerformUpdate downloads and installs the new version (Windows only)
+// Downloads EXE directly and uses batch script to replace current exe
 func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	if downloadURL == "" {
 		return false, fmt.Errorf("no download URL provided")
@@ -139,15 +140,11 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to get executable path: %w", err)
 	}
-	exePath, err = filepath.Abs(exePath)
-	if err != nil {
-		return false, fmt.Errorf("failed to get absolute path: %w", err)
-	}
+	exePath, _ = filepath.Abs(exePath)
 
 	// Create temp file for download
 	tempDir := os.TempDir()
-	tempFile := filepath.Join(tempDir, "sql_helper_update.zip")
-	extractDir := filepath.Join(tempDir, "sql_helper_update_extracted")
+	tempFile := filepath.Join(tempDir, "sql_helper_update.exe")
 
 	// Emit progress event
 	runtime.EventsEmit(a.ctx, "updateProgress", "Downloading update...")
@@ -169,7 +166,7 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 		return false, fmt.Errorf("failed to create temp file: %w", err)
 	}
 
-	// Download with progress
+	// Download
 	_, err = io.Copy(out, resp.Body)
 	out.Close()
 	if err != nil {
@@ -181,26 +178,18 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	// Create update batch script
 	// This script will:
 	// 1. Wait for current process to exit
-	// 2. Extract the zip file
-	// 3. Delete old exe
-	// 4. Move new exe to original location
-	// 5. Clean up and start new version
-	// 6. Delete itself
-	exeDir := filepath.Dir(exePath)
-	exeName := filepath.Base(exePath)
+	// 2. Delete old exe
+	// 3. Move new exe to original location
+	// 4. Start the new exe
+	// 5. Delete itself
 	batchPath := filepath.Join(tempDir, "update_sql_helper.bat")
 	batchContent := fmt.Sprintf(`@echo off
 timeout /t 2 /nobreak >nul
-powershell -Command "Expand-Archive -Path '%s' -DestinationPath '%s' -Force"
-del /f /q "%s"
-for %%f in ("%s\*.exe") do (
-    move /y "%%f" "%s\"
-)
-del /f /q "%s"
-rmdir /s /q "%s"
+del "%s"
+move /y "%s" "%s"
 start "" "%s"
 del "%%~f0"
-`, tempFile, extractDir, exePath, extractDir, exeDir, tempFile, extractDir, filepath.Join(exeDir, exeName))
+`, exePath, tempFile, exePath, exePath)
 
 	if err := os.WriteFile(batchPath, []byte(batchContent), 0644); err != nil {
 		return false, fmt.Errorf("failed to create update script: %w", err)
