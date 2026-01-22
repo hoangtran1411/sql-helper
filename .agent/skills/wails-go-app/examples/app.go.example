@@ -1,0 +1,146 @@
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+// App struct holds the application state
+type App struct {
+	ctx context.Context
+}
+
+// NewApp creates a new App application struct
+func NewApp() *App {
+	return &App{}
+}
+
+// startup is called when the app starts. Save the context for runtime calls.
+func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+}
+
+// ============ File Dialogs ============
+
+// SelectFile opens a file dialog and returns the selected file path
+func (a *App) SelectFile(title string, patterns []string) (string, error) {
+	filters := []runtime.FileFilter{}
+	if len(patterns) > 0 {
+		filters = append(filters, runtime.FileFilter{
+			DisplayName: "Allowed Files",
+			Pattern:     patterns[0],
+		})
+	}
+
+	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:   title,
+		Filters: filters,
+	})
+}
+
+// SelectFolder opens a folder dialog and returns the selected folder path
+func (a *App) SelectFolder(title string) (string, error) {
+	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: title,
+	})
+}
+
+// SaveFile opens a save file dialog and returns the selected path
+func (a *App) SaveFile(title string, defaultFilename string) (string, error) {
+	return runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           title,
+		DefaultFilename: defaultFilename,
+	})
+}
+
+// ============ Message Dialogs ============
+
+// ShowInfo shows an information dialog
+func (a *App) ShowInfo(title, message string) {
+	runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:    runtime.InfoDialog,
+		Title:   title,
+		Message: message,
+	})
+}
+
+// ShowError shows an error dialog
+func (a *App) ShowError(title, message string) {
+	runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:    runtime.ErrorDialog,
+		Title:   title,
+		Message: message,
+	})
+}
+
+// ShowConfirm shows a confirmation dialog and returns the user's choice
+func (a *App) ShowConfirm(title, message string) (bool, error) {
+	result, err := runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:          runtime.QuestionDialog,
+		Title:         title,
+		Message:       message,
+		Buttons:       []string{"Yes", "No"},
+		DefaultButton: "Yes",
+	})
+	return result == "Yes", err
+}
+
+// ============ Events ============
+
+// EmitProgress emits a progress event to the frontend
+func (a *App) EmitProgress(progress float64) {
+	runtime.EventsEmit(a.ctx, "progress", progress)
+}
+
+// EmitStatus emits a status message to the frontend
+func (a *App) EmitStatus(status string, statusType string) {
+	runtime.EventsEmit(a.ctx, "status", map[string]string{
+		"message": status,
+		"type":    statusType,
+	})
+}
+
+// ============ Window Control ============
+
+// MinimizeWindow minimizes the application window
+func (a *App) MinimizeWindow() {
+	runtime.WindowMinimise(a.ctx)
+}
+
+// MaximizeWindow maximizes the application window
+func (a *App) MaximizeWindow() {
+	runtime.WindowMaximise(a.ctx)
+}
+
+// SetWindowTitle sets the window title
+func (a *App) SetWindowTitle(title string) {
+	runtime.WindowSetTitle(a.ctx, title)
+}
+
+// QuitApp closes the application
+func (a *App) QuitApp() {
+	runtime.Quit(a.ctx)
+}
+
+// ============ Business Logic Example ============
+
+// ProcessData is an example method that processes data with progress reporting
+func (a *App) ProcessData(items []string) (string, error) {
+	total := len(items)
+	if total == 0 {
+		return "", fmt.Errorf("no items to process")
+	}
+
+	for i, item := range items {
+		// Simulate processing
+		fmt.Println("Processing:", item)
+
+		// Report progress
+		progress := float64(i+1) / float64(total) * 100
+		a.EmitProgress(progress)
+	}
+
+	return fmt.Sprintf("Processed %d items successfully", total), nil
+}

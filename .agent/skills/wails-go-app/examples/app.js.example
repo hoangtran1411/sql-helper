@@ -1,0 +1,139 @@
+/**
+ * Wails Frontend JavaScript Template
+ * Common patterns for Wails apps
+ */
+
+// ============ Initialization ============
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Listen for events from Go backend
+    if (typeof runtime !== 'undefined') {
+        // Progress updates
+        runtime.EventsOn('progress', function(progress) {
+            updateProgress(progress);
+        });
+
+        // Status updates
+        runtime.EventsOn('status', function(data) {
+            showStatus(data.message, data.type);
+        });
+    }
+});
+
+// ============ Go Method Calls ============
+
+/**
+ * Select a file using native dialog
+ */
+async function selectFile() {
+    try {
+        const path = await window.go.main.App.SelectFile('Select File', ['*.*']);
+        if (path) {
+            document.getElementById('filePath').value = path;
+        }
+    } catch (err) {
+        showStatus('Error: ' + err, 'error');
+    }
+}
+
+/**
+ * Select a folder using native dialog
+ */
+async function selectFolder() {
+    try {
+        const path = await window.go.main.App.SelectFolder('Select Folder');
+        if (path) {
+            document.getElementById('folderPath').value = path;
+        }
+    } catch (err) {
+        showStatus('Error: ' + err, 'error');
+    }
+}
+
+/**
+ * Start processing with progress tracking
+ */
+async function startProcess() {
+    const btn = document.getElementById('processBtn');
+    
+    try {
+        // Disable button during processing
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+        
+        // Reset progress
+        updateProgress(0);
+        
+        // Call Go method
+        const result = await window.go.main.App.ProcessData(['item1', 'item2', 'item3']);
+        
+        showStatus('✓ ' + result, 'success');
+    } catch (err) {
+        showStatus('✗ Error: ' + err, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Start Processing';
+    }
+}
+
+// ============ UI Helpers ============
+
+/**
+ * Update progress bar
+ * @param {number} percent - Progress percentage (0-100)
+ */
+function updateProgress(percent) {
+    const fill = document.getElementById('progressFill');
+    const text = document.getElementById('progressText');
+    
+    if (fill) fill.style.width = percent + '%';
+    if (text) text.textContent = Math.round(percent) + '%';
+}
+
+/**
+ * Show status message
+ * @param {string} message - Message to display
+ * @param {string} type - Message type: 'success', 'error', 'info'
+ */
+function showStatus(message, type) {
+    const section = document.getElementById('statusSection');
+    if (!section) return;
+    
+    section.innerHTML = `<div class="status-message ${type}">${message}</div>`;
+}
+
+/**
+ * Clear status message
+ */
+function clearStatus() {
+    const section = document.getElementById('statusSection');
+    if (section) section.innerHTML = '';
+}
+
+// ============ Utilities ============
+
+/**
+ * Debounce function for input handlers
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+/**
+ * Format file size to human readable
+ */
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
