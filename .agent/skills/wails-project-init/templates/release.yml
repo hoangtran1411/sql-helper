@@ -17,13 +17,13 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux/amd64
-            artifact_name: sql-helper-linux-amd64
+            artifact_name: {{PROJECT_NAME}}-linux-amd64
           - os: windows-latest
             platform: windows/amd64
-            artifact_name: sql-helper-windows-amd64
+            artifact_name: {{PROJECT_NAME}}-windows-amd64
           - os: macos-latest
             platform: darwin/universal
-            artifact_name: sql-helper-darwin-universal
+            artifact_name: {{PROJECT_NAME}}-darwin-universal
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "{{GO_VERSION}}"
           cache: true
 
       - name: Setup Node.js

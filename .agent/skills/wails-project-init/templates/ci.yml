@@ -17,7 +17,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "{{GO_VERSION}}"
           cache: true
 
       - name: Run golangci-lint
@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        go-version: ["1.23"]
+        go-version: ["{{GO_VERSION}}"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -93,7 +93,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "{{GO_VERSION}}"
           cache: true
 
       - name: Setup Node.js
@@ -121,6 +121,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sql-helper-${{ matrix.os }}
+          name: {{PROJECT_NAME}}-${{ matrix.os }}
           path: build/bin/
           if-no-files-found: error
