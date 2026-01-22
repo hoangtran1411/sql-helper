@@ -106,6 +106,12 @@ func TestUpdateInfoWithValues(t *testing.T) {
 	if info.LatestVer != "v2.0.0" {
 		t.Errorf("UpdateInfo.LatestVer = %q, want %q", info.LatestVer, "v2.0.0")
 	}
+	if info.DownloadURL != "https://example.com/download" {
+		t.Errorf("UpdateInfo.DownloadURL = %q, want %q", info.DownloadURL, "https://example.com/download")
+	}
+	if info.ReleaseURL != "https://example.com/release" {
+		t.Errorf("UpdateInfo.ReleaseURL = %q, want %q", info.ReleaseURL, "https://example.com/release")
+	}
 }
 
 func TestGitHubReleaseStruct(t *testing.T) {
