@@ -215,21 +215,24 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	// 2. Extracts ZIP using PowerShell
 	// 3. Deletes old executable
 	// 4. Moves new executable to original location
-	// 5. Cleans up extract directory
+	// 5. Cleans up temp files and extract directory
 	// 6. Starts new version
 	// 7. Deletes itself
+	exeDir := filepath.Dir(exePath)
+	exeName := filepath.Base(exePath)
 	batchPath := filepath.Join(tempDir, "update_{{PROJECT_NAME}}.bat")
 	batchContent := fmt.Sprintf(`@echo off
 timeout /t 2 /nobreak >nul
 powershell -Command "Expand-Archive -Path '%s' -DestinationPath '%s' -Force"
-del "%s"
-for %%%%f in ("%s\*.exe") do (
-    move /y "%%%%f" "%s"
+del /f /q "%s"
+for %%f in ("%s\*.exe") do (
+    move /y "%%f" "%s\"
 )
+del /f /q "%s"
 rmdir /s /q "%s"
 start "" "%s"
 del "%%~f0"
-`, tempFile, extractDir, exePath, extractDir, exePath, extractDir, exePath)
+`, tempFile, extractDir, exePath, extractDir, exeDir, tempFile, extractDir, filepath.Join(exeDir, exeName))
 
 	if err := os.WriteFile(batchPath, []byte(batchContent), 0644); err != nil {
 		return false, fmt.Errorf("failed to create update script: %w", err)

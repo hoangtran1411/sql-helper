@@ -182,21 +182,25 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	// This script will:
 	// 1. Wait for current process to exit
 	// 2. Extract the zip file
-	// 3. Replace old exe with new one
-	// 4. Start the new exe
-	// 5. Clean up and delete itself
+	// 3. Delete old exe
+	// 4. Move new exe to original location
+	// 5. Clean up and start new version
+	// 6. Delete itself
+	exeDir := filepath.Dir(exePath)
+	exeName := filepath.Base(exePath)
 	batchPath := filepath.Join(tempDir, "update_sql_helper.bat")
 	batchContent := fmt.Sprintf(`@echo off
 timeout /t 2 /nobreak >nul
 powershell -Command "Expand-Archive -Path '%s' -DestinationPath '%s' -Force"
-del "%s"
+del /f /q "%s"
 for %%f in ("%s\*.exe") do (
-    move /y "%%f" "%s"
+    move /y "%%f" "%s\"
 )
+del /f /q "%s"
 rmdir /s /q "%s"
 start "" "%s"
 del "%%~f0"
-`, tempFile, extractDir, exePath, extractDir, exePath, extractDir, exePath)
+`, tempFile, extractDir, exePath, extractDir, exeDir, tempFile, extractDir, filepath.Join(exeDir, exeName))
 
 	if err := os.WriteFile(batchPath, []byte(batchContent), 0644); err != nil {
 		return false, fmt.Errorf("failed to create update script: %w", err)
