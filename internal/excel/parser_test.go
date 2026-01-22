@@ -258,9 +258,9 @@ func TestProcessSheet_SparseData(t *testing.T) {
 	// Sparse data: some cells are empty
 	testData := [][]string{
 		{"A", "B", "C"},
-		{"1", "", "3"},   // B is empty
-		{"", "2", ""},    // A and C are empty
-		{"x", "y", "z"},  // All filled
+		{"1", "", "3"},  // B is empty
+		{"", "2", ""},   // A and C are empty
+		{"x", "y", "z"}, // All filled
 	}
 	filePath := createTestExcelFile(t, tempDir, testData)
 

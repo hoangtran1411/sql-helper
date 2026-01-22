@@ -120,7 +120,7 @@ func TestGitHubReleaseStruct(t *testing.T) {
 	if release.HTMLURL != "https://github.com/user/repo/releases/v1.0.0" {
 		t.Errorf("GitHubRelease.HTMLURL = %q", release.HTMLURL)
 	}
-	if release.Assets != nil && len(release.Assets) != 0 {
+	if len(release.Assets) != 0 {
 		t.Error("GitHubRelease.Assets should be empty")
 	}
 }
