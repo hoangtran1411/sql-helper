@@ -140,7 +140,10 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to get executable path: %w", err)
 	}
-	exePath, _ = filepath.Abs(exePath)
+	exePath, err = filepath.Abs(exePath)
+	if err != nil {
+		return false, fmt.Errorf("failed to get absolute path: %w", err)
+	}
 
 	// Create temp file for download
 	tempDir := os.TempDir()

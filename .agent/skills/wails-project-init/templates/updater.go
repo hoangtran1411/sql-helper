@@ -156,10 +156,10 @@ func parseVersion(v string) [3]int {
 
 // PerformUpdate downloads and installs the new version (Windows only)
 // Uses a batch script approach:
-// 1. Download ZIP to temp directory
+// 1. Download EXE to temp directory
 // 2. Create batch script that waits for app to exit
-// 3. Batch extracts ZIP, replaces exe, restarts app
-// 4. Batch cleans up and deletes itself
+// 3. Batch deletes old exe, moves new exe in place
+// 4. Batch restarts app and deletes itself
 func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	if downloadURL == "" {
 		return false, fmt.Errorf("no download URL provided")
@@ -175,10 +175,9 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 		return false, fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
-	// Create temp paths for download and extraction
+	// Create temp path for download
 	tempDir := os.TempDir()
-	tempFile := filepath.Join(tempDir, "{{PROJECT_NAME}}_update.zip")
-	extractDir := filepath.Join(tempDir, "{{PROJECT_NAME}}_update_extracted")
+	tempFile := filepath.Join(tempDir, "{{PROJECT_NAME}}_update.exe")
 
 	// Emit progress event to frontend
 	runtime.EventsEmit(a.ctx, "updateProgress", "Downloading update...")
@@ -212,27 +211,18 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	// Create update batch script
 	// This runs after the app exits and:
 	// 1. Waits 2 seconds for app to fully exit
-	// 2. Extracts ZIP using PowerShell
-	// 3. Deletes old executable
-	// 4. Moves new executable to original location
-	// 5. Cleans up temp files and extract directory
-	// 6. Starts new version
-	// 7. Deletes itself
-	exeDir := filepath.Dir(exePath)
-	exeName := filepath.Base(exePath)
+	// 2. Deletes old executable
+	// 3. Moves new executable to original location
+	// 4. Starts new version
+	// 5. Deletes itself
 	batchPath := filepath.Join(tempDir, "update_{{PROJECT_NAME}}.bat")
 	batchContent := fmt.Sprintf(`@echo off
 timeout /t 2 /nobreak >nul
-powershell -Command "Expand-Archive -Path '%s' -DestinationPath '%s' -Force"
-del /f /q "%s"
-for %%f in ("%s\*.exe") do (
-    move /y "%%f" "%s\"
-)
-del /f /q "%s"
-rmdir /s /q "%s"
+del "%s"
+move /y "%s" "%s"
 start "" "%s"
 del "%%~f0"
-`, tempFile, extractDir, exePath, extractDir, exeDir, tempFile, extractDir, filepath.Join(exeDir, exeName))
+`, exePath, tempFile, exePath, exePath)
 
 	if err := os.WriteFile(batchPath, []byte(batchContent), 0644); err != nil {
 		return false, fmt.Errorf("failed to create update script: %w", err)
