@@ -2,15 +2,14 @@
 
 # 📊 SQL Helper
 
-**A modern desktop application for converting Excel data to SQL INSERT statements**
+**A modern Windows desktop application for converting Excel data to SQL INSERT statements**
 
 [![CI](https://github.com/hoangtran1411/sql-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/hoangtran1411/sql-helper/actions/workflows/ci.yml)
 [![Release](https://github.com/hoangtran1411/sql-helper/actions/workflows/release.yml/badge.svg)](https://github.com/hoangtran1411/sql-helper/actions/workflows/release.yml)
-[![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![Wails](https://img.shields.io/badge/Wails-v2-DF0000?style=flat&logo=wails)](https://wails.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub release](https://img.shields.io/github/v/release/hoangtran1411/sql-helper?include_prereleases)](https://github.com/hoangtran1411/sql-helper/releases)
-[![Downloads](https://img.shields.io/github/downloads/hoangtran1411/sql-helper/total)](https://github.com/hoangtran1411/sql-helper/releases)
 
 [Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Development](#-development) • [Contributing](#-contributing)
 
@@ -22,13 +21,12 @@
 
 - 🚀 **Fast Excel Parsing** — Efficiently read and parse `.xlsx` files using Excelize
 - 📝 **SQL Generation** — Convert Excel rows to SQL INSERT statements instantly
-- 🔢 **Smart Number Detection** — Automatically detect numeric columns to avoid quoting
+- 🔢 **Smart Number Detection** — Automatically detect numeric columns to avoid unnecessary quoting
 - 🔄 **Find & Replace** — Transform data values before generating SQL
 - 📋 **One-Click Copy** — Copy generated SQL to clipboard with a single click
-- 💾 **Export to File** — Save SQL output directly to `.sql` files
-- 🔄 **Auto-Update** — Built-in update checker with one-click installation
-- 🎨 **Modern UI** — Clean, responsive interface built with HTML/CSS/JS
-- 🖥️ **Cross-Platform** — Available for Windows, macOS, and Linux
+- 💾 **Export to File** — Save SQL output directly to `.txt` files
+- 🔄 **Auto-Update** — Built-in update checker with automatic installation for Windows
+- 🎨 **Modern UI** — Clean, responsive dark-themed interface built with HTML/CSS/JS
 
 ## 📸 Screenshots
 
@@ -40,13 +38,13 @@
 
 ### Download Pre-built Binaries
 
-Download the latest release for your platform from the [Releases](https://github.com/hoangtran1411/sql-helper/releases) page:
+Download the latest release for Windows from the [Releases](https://github.com/hoangtran1411/sql-helper/releases) page:
 
 | Platform | Download |
 |----------|----------|
-| Windows | `sql-helper-windows-amd64.zip` |
-| macOS | `sql-helper-darwin-universal.tar.gz` |
-| Linux | `sql-helper-linux-amd64.tar.gz` |
+| **Windows** (x64) | [`sql-helper-windows-amd64.exe`](https://github.com/hoangtran1411/sql-helper/releases/latest) |
+
+*Note: macOS and Linux builds are planned. For now, you can build from source.*
 
 ### Build from Source
 
@@ -56,50 +54,40 @@ See the [Development](#-development) section for build instructions.
 
 ### Quick Start
 
-1. **Open Excel File** — Click "Browse" to select your `.xlsx` file
-2. **Select Sheet** — Choose the worksheet containing your data
-3. **Configure Options** — Set table name and number columns
-4. **Generate SQL** — Click "Generate" to create INSERT statements
-5. **Copy or Save** — Copy to clipboard or export to file
+1. **Open Excel File** — Click "Browse" to select your `.xlsx` file.
+2. **Select Sheet** — Choose the worksheet containing your data from the dropdown.
+3. **Configure Options** — Set the target **Table Name** and specify **Number Columns** (comma-separated indices, e.g., `1,3`).
+4. **Generate SQL** — Click "**Generate SQL**" to create INSERT statements.
+5. **Copy or Save** — Use the copy button for clipboard or export to a file.
 
 ### Excel File Format
 
-Your Excel file should have:
-- **Row 1**: Column headers (these become SQL column names)
-- **Row 2+**: Data rows (each row becomes an INSERT statement)
+Your Excel file should follow a standard table structure:
+- **First Row**: Column headers (used as SQL column names).
+- **Subsequent Rows**: Data rows (transformed into individual VALUE tuples).
 
-**Example:**
+**Example Data:**
 
-| ID | Name | Price | Quantity |
-|----|------|-------|----------|
-| 1 | Widget A | 29.99 | 100 |
-| 2 | Widget B | 49.99 | 50 |
+| ID | Name | Price | Status |
+|----|------|-------|--------|
+| 1 | Product A | 25.50 | Active |
+| 2 | Product B | 40.00 | Inactive |
 
-### Generated SQL
+**Generated SQL Output:**
 
 ```sql
-INSERT INTO products (ID, Name, Price, Quantity) VALUES
-(1, 'Widget A', 29.99, 100),
-(2, 'Widget B', 49.99, 50);
+INSERT INTO products (ID, Name, Price, Status) VALUES
+(1, 'Product A', 25.5, 'Active'),
+(2, 'Product B', 40, 'Inactive');
 ```
 
-### Number Columns
-
-Specify which columns contain numeric values (e.g., `1,3,4` for columns 1, 3, and 4). These values won't be wrapped in quotes.
-
-### Find & Replace
-
-Transform data before SQL generation:
-- **Find**: Text pattern to search for
-- **Replace**: Replacement text
-
-Useful for escaping special characters or standardizing data formats.
+---
 
 ## 🛠️ Development
 
 ### Prerequisites
 
-- [Go 1.23+](https://go.dev/dl/)
+- [Go 1.24+](https://go.dev/dl/)
 - [Node.js 20+](https://nodejs.org/)
 - [Wails CLI](https://wails.io/docs/gettingstarted/installation)
 
@@ -118,15 +106,11 @@ cd sql-helper
 # Install dependencies
 go mod download
 
-# Run in development mode
+# Run in development mode (with hot reload)
 make dev
-# or
-wails dev
 
-# Build production binary
-make build
-# or
-wails build
+# Build production binary for Windows
+make build-windows
 ```
 
 ### Available Commands
@@ -134,12 +118,12 @@ wails build
 | Command | Description |
 |---------|-------------|
 | `make dev` | Run in development mode with hot reload |
-| `make build` | Build production binary |
-| `make test` | Run all tests |
+| `make build` | Build production binary for current platform |
+| `make build-windows` | Cross-compile for Windows AMD64 |
+| `make test` | Run all Go unit tests |
 | `make lint` | Run golangci-lint |
-| `make coverage` | Generate test coverage report |
-| `make fmt` | Format code with gofmt |
-| `make clean` | Remove build artifacts |
+| `make coverage` | Generate and view test coverage |
+| `make clean` | Remove build artifacts and coverage files |
 
 ### Project Structure
 
@@ -147,61 +131,32 @@ wails build
 sql-helper/
 ├── main.go              # Wails entry point
 ├── app.go               # App struct with Wails bindings
-├── updater.go           # Auto-update functionality
+├── updater.go           # Auto-update functionality (Windows)
 ├── internal/
-│   ├── excel/           # Excel parsing logic
-│   │   ├── parser.go
-│   │   └── parser_test.go
-│   └── sql/             # SQL generation logic
-│       ├── generator.go
-│       ├── generator_test.go
-│       ├── formatter.go
-│       └── formatter_test.go
-├── frontend/            # Web frontend (HTML/CSS/JS)
-├── build/               # Build output
-└── .github/workflows/   # CI/CD pipelines
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-make test
-
-# Run tests with coverage
-make coverage
-
-# View coverage report in browser
-go tool cover -html=coverage.out
-```
-
-### Linting
-
-```bash
-# Install golangci-lint
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
-# Run linter
-make lint
+│   ├── excel/           # Excel parsing logic (Excelize)
+│   └── sql/             # SQL generation & formatting logic
+├── frontend/            # Vue/React/Svelte/Vanilla frontend
+├── build/               # Build output & icons
+└── .github/workflows/   # CI/CD (Lint, Test, Release)
 ```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on:
+Contributions are welcome! Please check our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-- Code of Conduct
-- Development workflow
-- Submitting pull requests
-- Coding standards
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📋 Roadmap
 
-- [ ] Support for `.xls` (legacy Excel) files
-- [ ] Multiple database dialect support (MySQL, PostgreSQL, SQLite)
-- [ ] Batch processing for multiple sheets
-- [ ] Custom SQL templates
-- [ ] Dark mode theme
-- [ ] Localization support
+- [ ] Multiple database dialect support (PostgreSQL, SQLite, Oracle)
+- [ ] Native macOS and Linux releases
+- [ ] Dark/Light mode toggle (currently Dark only)
+- [ ] Batch processing for multiple Excel files at once
+- [ ] Custom SQL templates (INSERT IGNORE, REPLACE INTO, etc.)
 
 ## 📜 License
 
@@ -209,15 +164,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- [Wails](https://wails.io/) — Build desktop apps with Go and web technologies
-- [Excelize](https://github.com/xuri/excelize) — Go library for reading/writing Excel files
-- [golangci-lint](https://golangci-lint.run/) — Fast Go linters runner
+- [Wails](https://wails.io/) — The amazing Go/Web hybrid framework.
+- [Excelize](https://github.com/xuri/excelize) — Powering the Excel parsing.
+- [Go-Ole](https://github.com/go-ole/go-ole) — Essential for Windows integration.
 
 ---
 
 <div align="center">
 
-**Made with ❤️ by [Hoang Tran](https://github.com/hoangtran1411)**
+**Created by [Hoang Tran](https://github.com/hoangtran1411)**
 
 ⭐ Star this repo if you find it useful!
 
