@@ -100,6 +100,54 @@ Excluded patterns:
 
 ## Reference and Resource Mapping
 
+### Official Go Documentation
+
+- Reference: https://go.dev/doc
+
+- Guideline: Primary source for Go syntax, tooling, modules, and release notes.
+
+### Effective Go
+
+- Reference: https://go.dev/doc/effective_go
+
+- Guideline: Defines idiomatic Go practices (naming, control flow, error handling). All internal/ packages must comply.
+
+### Go Modules
+
+- Reference: https://go.dev/ref/mod
+
+- Guideline: Dependency management using go.mod and go.sum. Avoid unnecessary replace directives in production.
+
+### Go Testing
+
+- Reference: https://go.dev/doc/testing
+
+- Guideline: Standard patterns for unit tests, table-driven tests, benchmarks, and coverage analysis.
+
+### Go Context
+
+- Reference: https://pkg.go.dev/context
+
+- Guideline: Mandatory for cancellation, timeouts, and request-scoped values in I/O and concurrent operations.
+
+### Go Error Handling
+
+- Reference: https://go.dev/blog/error-handling-and-go
+
+- Guideline: Errors are values. Always return and wrap errors; avoid panic in business logic.
+
+### Go Concurrency Patterns
+
+- Reference: https://go.dev/doc/effective_go#concurrency
+
+- Guideline: Use goroutines and channels deliberately. Avoid shared mutable state unless properly synchronized.
+
+### Go Standard Library
+
+- Reference: https://pkg.go.dev/std
+
+- Guideline: Prefer the Go standard library before introducing third-party dependencies.
+
 ### Wails Desktop App
 - Reference: https://github.com/wailsapp/wails
 - Guideline: Follow Wails v2 patterns for Go-to-frontend binding. Use event system for real-time progress updates.
