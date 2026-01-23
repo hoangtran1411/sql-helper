@@ -93,7 +93,7 @@ INSERT INTO products (ID, Name, Price, Status) VALUES
 
 ```bash
 # Install Wails CLI
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
 ```
 
 ### Clone & Build
