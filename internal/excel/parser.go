@@ -29,27 +29,30 @@ func ProcessSheet(filePath, sheetName string) (*SheetData, error) {
 	}
 	defer f.Close()
 
-	rows, err := f.GetRows(sheetName)
+	rows, err := f.Rows(sheetName)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	if len(rows) == 0 {
-		return &SheetData{
-			Headers:  []string{},
-			DataRows: [][]interface{}{},
-		}, nil
-	}
+	var headers []string
+	var dataRows [][]interface{}
 
-	// First row is headers
-	headers := rows[0]
+	isFirstRow := true
+	for rows.Next() {
+		row, err := rows.Columns()
+		if err != nil {
+			return nil, err
+		}
 
-	// Convert remaining rows to []interface{}
-	dataRows := make([][]interface{}, 0, len(rows)-1)
-	for i := 1; i < len(rows); i++ {
-		row := rows[i]
+		if isFirstRow {
+			headers = row
+			isFirstRow = false
+			continue
+		}
+
+		// Create interface slice for the row, ensuring it matches header length
 		interfaceRow := make([]interface{}, len(headers))
-
 		for j := 0; j < len(headers); j++ {
 			if j < len(row) && row[j] != "" {
 				interfaceRow[j] = row[j]
@@ -57,7 +60,6 @@ func ProcessSheet(filePath, sheetName string) (*SheetData, error) {
 				interfaceRow[j] = nil
 			}
 		}
-
 		dataRows = append(dataRows, interfaceRow)
 	}
 

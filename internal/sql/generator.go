@@ -57,19 +57,19 @@ func GenerateSQLValues(headers []string, dataRows [][]interface{}, numberColumns
 
 // FindAndReplace replaces values in the data rows
 func FindAndReplace(dataRows [][]interface{}, findValue, replaceWith string) [][]interface{} {
-	result := make([][]interface{}, len(dataRows))
-
-	for i, row := range dataRows {
-		newRow := make([]interface{}, len(row))
-		for j, cell := range row {
-			if fmt.Sprintf("%v", cell) == findValue {
-				newRow[j] = replaceWith
-			} else {
-				newRow[j] = cell
-			}
-		}
-		result[i] = newRow
+	if dataRows == nil {
+		return make([][]interface{}, 0)
 	}
 
-	return result
+	for _, row := range dataRows {
+		for j, cell := range row {
+			// Convert to string to check value - simple robust check
+			// Optimization: could be type-specific but generic is safer for now
+			if fmt.Sprintf("%v", cell) == findValue {
+				row[j] = replaceWith
+			}
+		}
+	}
+
+	return dataRows
 }

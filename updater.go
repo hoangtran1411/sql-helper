@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -57,7 +58,10 @@ func (a *App) CheckForUpdate() UpdateInfo {
 
 	// Call GitHub API
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", GitHubOwner, GitHubRepo)
-	resp, err := http.Get(url)
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := client.Get(url)
 	if err != nil {
 		return info
 	}
@@ -153,7 +157,11 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	runtime.EventsEmit(a.ctx, "updateProgress", "Downloading update...")
 
 	// Download new version
-	resp, err := http.Get(downloadURL)
+	// Use a client with a long timeout for downloads
+	client := &http.Client{
+		Timeout: 30 * time.Minute,
+	}
+	resp, err := client.Get(downloadURL)
 	if err != nil {
 		return false, fmt.Errorf("failed to download: %w", err)
 	}
