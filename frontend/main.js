@@ -48,7 +48,12 @@ const elements = {
 
     // Modals
     sheetModal: null,
-    confirmModal: null
+    confirmModal: null,
+
+    // Footer
+    appVersion: document.getElementById('appVersion'),
+    updateBadge: document.getElementById('updateBadge'),
+    newVersionLabel: document.getElementById('newVersionLabel')
 };
 
 // ===================================
@@ -62,8 +67,53 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bind event listeners
     bindEventListeners();
 
+    // Display version and check for updates
+    displayCurrentVersion();
+    checkUpdate();
+
     console.log('SQL Helper initialized');
 });
+
+// ===================================
+// Auto Update
+// ===================================
+async function displayCurrentVersion() {
+    try {
+        const ver = await window.go.main.App.GetCurrentVersion();
+        elements.appVersion.textContent = ver;
+    } catch (err) {
+        console.error('Failed to get version:', err);
+    }
+}
+
+async function checkUpdate() {
+    try {
+        const info = await window.go.main.App.CheckForUpdate();
+
+        if (info.available) {
+            elements.newVersionLabel.textContent = info.latestVersion;
+            elements.updateBadge.style.display = 'inline-flex';
+            elements.updateBadge.onclick = () => handleUpdate(info.downloadUrl);
+        }
+    } catch (err) {
+        console.error('Failed to check for updates:', err);
+    }
+}
+
+// Global function for update handler
+window.handleUpdate = async (url) => {
+    if (!confirm('Download and install new update? The app will restart.')) {
+        return;
+    }
+
+    showLoading(true);
+    try {
+        await window.go.main.App.PerformUpdate(url);
+    } catch (err) {
+        showLoading(false);
+        showToast('Update failed: ' + err, 'error');
+    }
+};
 
 // ===================================
 // Event Listeners

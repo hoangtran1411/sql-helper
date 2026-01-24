@@ -21,7 +21,12 @@
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: var(--bg-light);
-    min-height: 100vh;
+    height: 100vh;
+    /* Fixed height */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* No body scroll */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -29,108 +34,53 @@ body {
 /* ----- Navbar Styles ----- */
 .navbar {
     box-shadow: var(--shadow-lg);
+    flex-shrink: 0;
+    /* Keep navbar fixed size */
+    z-index: 1000;
 }
 
-.navbar-brand {
-    font-size: 1.25rem;
-    letter-spacing: -0.5px;
-}
+/* ... existing navbar styles ... */
 
-.navbar-brand i {
-    color: #4dabf7;
-}
-
-.nav-link {
-    transition: var(--transition);
-    padding: 0.5rem 1rem !important;
-    border-radius: var(--border-radius);
-    margin: 0 0.25rem;
-}
-
-.nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* ----- Card Styles ----- */
-.card {
-    border-radius: var(--border-radius);
-    transition: var(--transition);
-}
-
-.card:hover {
-    box-shadow: var(--shadow-lg);
-}
-
-.card-header {
-    background-color: transparent;
-    padding: 1rem 1.25rem;
-}
-
-.card-title {
+/* ----- Main Layout ----- */
+/* Target the main container via direct child of body if possible, or use class */
+body>.container {
+    flex-grow: 1;
+    overflow: hidden;
+    /* CRITICAL: Hide outer scrollbar */
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    max-width: 100%;
+    padding-bottom: 0.5rem;
+    /* Small bottom padding */
+    height: 100%;
 }
 
-.card-title i {
-    color: var(--primary-color);
+/* Make the last card (SQL Result) fill remaining space but NOT expand beyond viewport */
+body>.container>.card:last-child {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    /* CRITICAL: Allow flex item to shrink below content size */
+    margin-bottom: 0 !important;
 }
 
-/* ----- Form Styles ----- */
-.form-control {
-    border-radius: var(--border-radius);
-    padding: 0.625rem 1rem;
-    transition: var(--transition);
-}
-
-.form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
-}
-
-.form-label {
-    font-weight: 500;
-    color: var(--text-muted);
-    font-size: 0.875rem;
-    margin-bottom: 0.4rem;
-}
-
-/* ----- Button Styles ----- */
-.btn {
-    border-radius: var(--border-radius);
-    padding: 0.5rem 1rem;
-    font-weight: 500;
-    transition: var(--transition);
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    border: none;
-}
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.35);
-}
-
-.btn-outline-secondary {
-    border-color: #dee2e6;
-}
-
-.btn-outline-secondary:hover {
-    background-color: #f8f9fa;
-    border-color: #adb5bd;
-    color: #495057;
-}
-
-.btn-sm {
-    padding: 0.35rem 0.75rem;
-    font-size: 0.8125rem;
+body>.container>.card:last-child .card-body {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    overflow: hidden;
+    /* Clip anything that protrudes */
 }
 
 /* ----- Textarea Styles ----- */
 #sqlResult {
-    resize: vertical;
-    min-height: 300px;
+    resize: none;
+    flex-grow: 1;
+    height: 100%;
+    width: 100%;
+    min-height: 0;
     background-color: #f8f9fa;
     border: 1px solid #e9ecef;
     font-size: 0.875rem;
@@ -162,18 +112,63 @@ body {
     user-select: none;
 }
 
-/* ----- Column Checkbox Container ----- */
-#columnCheckboxes .form-check {
-    background-color: #ffffff;
-    padding: 0.5rem 1rem;
-    border-radius: var(--border-radius);
-    border: 1px solid #e9ecef;
-    transition: var(--transition);
+/* ----- Column Checkbox Container (Modern Tags) ----- */
+#columnCheckboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
-#columnCheckboxes .form-check:hover {
+#columnCheckboxes .form-check {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+/* Hide actual checkbox but keep functionality */
+#columnCheckboxes .form-check-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Style label as a Tag/Badge */
+#columnCheckboxes .form-check-label {
+    display: inline-block;
+    padding: 0.35rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 50rem;
+    /* Pill shape */
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+/* Hover state */
+#columnCheckboxes .form-check-label:hover {
+    background-color: #f1f3f5;
+    border-color: #ced4da;
+    color: #495057;
+    transform: translateY(-1px);
+}
+
+/* Checked state (The magic part) */
+#columnCheckboxes .form-check-input:checked+.form-check-label {
+    background-color: var(--primary-color);
     border-color: var(--primary-color);
-    background-color: rgba(13, 110, 253, 0.05);
+    color: white;
+    box-shadow: 0 2px 5px rgba(13, 110, 253, 0.3);
+}
+
+/* Checked + Hover */
+#columnCheckboxes .form-check-input:checked+.form-check-label:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
 }
 
 /* ----- Loading Overlay ----- */
@@ -243,6 +238,7 @@ body {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -279,15 +275,15 @@ body {
         padding-left: 1rem;
         padding-right: 1rem;
     }
-    
+
     .navbar-brand {
         font-size: 1.1rem;
     }
-    
+
     #sqlResult {
         min-height: 200px;
     }
-    
+
     .btn-sm {
         padding: 0.25rem 0.5rem;
         font-size: 0.75rem;
@@ -307,6 +303,25 @@ body {
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* ----- Pulse Animation for Update Badge ----- */
+@keyframes pulse-primary {
+    0% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(13, 110, 253, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+    }
+}
+
+.animate-pulse {
+    animation: pulse-primary 2s infinite;
 }
 
 .form-control:disabled {
