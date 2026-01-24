@@ -353,6 +353,17 @@ When generating Go code for this project:
 - Prefer idiomatic Go over patterns from other languages (Java/C#/JS).
 - If unsure, follow Effective Go first.
 
+### AI Context Accuracy Rules
+
+Providing documentation links is encouraged but insufficient.
+
+- Documentation links are references, not guarantees of correctness.
+- Agents must not assume API behavior solely based on documentation links.
+- For any non-trivial, version-sensitive, or external API:
+  - Prefer explicit function signatures or relevant doc snippets in context.
+  - If such context is missing, the agent must clearly state assumptions.
+- When uncertainty exists, correctness is prioritized over completeness.
+
 ---
 
 ## Reference and Resource Mapping
