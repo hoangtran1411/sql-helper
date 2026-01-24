@@ -364,6 +364,18 @@ Providing documentation links is encouraged but insufficient.
   - If such context is missing, the agent must clearly state assumptions.
 - When uncertainty exists, correctness is prioritized over completeness.
 
+**Library Version Awareness:**
+- LLMs often hallucinate APIs for newer library features not in training data.
+- Always check `go.mod` for actual dependency versions before suggesting APIs.
+- When using third-party libraries (e.g., Excelize, Wails), verify API existence in the specific version.
+- Prefer stable, well-documented APIs over newer experimental features.
+
+**Context Engineering Principles:**
+- Provide the **right context at the right time**, not all documentation at once.
+- Include relevant code snippets, function signatures, and usage patterns.
+- Reference project-specific patterns from existing codebase before inventing new ones.
+- When stuck, explicitly state what context is missing rather than guessing.
+
 ---
 
 ## Reference and Resource Mapping
