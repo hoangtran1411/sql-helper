@@ -42,6 +42,8 @@ sql-helper/
 - Always wrap errors using %w: fmt.Errorf("context: %w", err). Critical for tracing Excel I/O errors.
 - Implement fail fast logic using guard clauses to minimize indentation.
 - Handle close errors in defer statements: use defer f.Close() pattern for excelize.File.
+- Do not log and return the same error.
+- Choose one responsibility per layer.
 
 ## Context and Concurrency
 

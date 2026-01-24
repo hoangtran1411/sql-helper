@@ -37,6 +37,8 @@ This project is a **{{PROJECT_DESCRIPTION}}** built with:
 - Always wrap errors using `%w`: `fmt.Errorf("context: %w", err)`.
 - Implement fail fast logic using guard clauses to minimize indentation.
 - Handle close errors in defer statements appropriately.
+- Do not log and return the same error.
+- Choose one responsibility per layer.
 
 ## Context and Concurrency
 
