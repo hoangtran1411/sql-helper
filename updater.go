@@ -104,7 +104,7 @@ func CompareVersions(v1, v2 string) bool {
 	parts2 := parseVersion(v2)
 
 	// Compare major, minor, patch in order
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if parts1[i] > parts2[i] {
 			return true
 		}
