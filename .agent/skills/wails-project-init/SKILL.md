@@ -55,16 +55,19 @@ Copy the following files from `templates/` directory into your project:
 | `Makefile` | `Makefile` |
 | `updater.go` | `updater.go` |
 | `updater_test.go` | `updater_test.go` |
+| `go-style-guide.md` | `.agent/rules/go-style-guide.md` |
 
 ### 4. Update Project-Specific Values
 
 After copying, update these placeholders:
 
-| Placeholder | Replace With |
-|-------------|--------------|
-| `{{PROJECT_NAME}}` | Your project name (e.g., `sql-helper`) |
-| `{{GITHUB_OWNER}}` | Your GitHub username |
-| `{{GITHUB_REPO}}` | Your repository name |
+| Placeholder | Replace With | Used In |
+|-------------|--------------|----------|
+| `{{PROJECT_NAME}}` | Your project name (e.g., `sql-helper`) | go-style-guide.md, Makefile |
+| `{{PROJECT_DESCRIPTION}}` | Brief project description | go-style-guide.md |
+| `{{DOMAIN}}` | Main domain package name (e.g., `excel`, `api`) | go-style-guide.md |
+| `{{GITHUB_OWNER}}` | Your GitHub username | updater.go |
+| `{{GITHUB_REPO}}` | Your repository name | updater.go |
 
 **Note**: `GO_VERSION` and `NODE_VERSION` are now defined as environment variables at the top of the CI file. Update them there if needed.
 
@@ -289,7 +292,8 @@ run: wails build -ldflags "-s -w -X main.CurrentVersion=${{ github.ref_name }}"
 
 - [ ] Create Wails project
 - [ ] Copy template files from `.agent/skills/wails-project-init/templates/`
-- [ ] Replace `{{PROJECT_NAME}}` placeholder
+- [ ] Create `.agent/rules/` directory and copy `go-style-guide.md`
+- [ ] Replace all placeholders: `{{PROJECT_NAME}}`, `{{PROJECT_DESCRIPTION}}`, `{{DOMAIN}}`
 - [ ] Update `GitHubOwner` and `GitHubRepo` in `updater.go`
 - [ ] Integrate updater methods in `app.go`
 - [ ] Add update UI to frontend
@@ -308,12 +312,35 @@ All templates are in the `templates/` subdirectory:
 
 ```
 templates/
-├── ci.yml           # GitHub Actions CI workflow (tested on all platforms)
-├── release.yml      # GitHub Release automation
-├── golangci.yml     # Linter configuration
-├── Makefile         # Development commands
-├── updater.go       # Auto-update functionality
-└── updater_test.go  # Update tests
+├── ci.yml              # GitHub Actions CI workflow (tested on all platforms)
+├── release.yml         # GitHub Release automation
+├── golangci.yml        # Linter configuration
+├── Makefile            # Development commands
+├── updater.go          # Auto-update functionality
+├── updater_test.go     # Update tests
+└── go-style-guide.md   # Go style guide with idioms & best practices
 ```
 
 Each template contains inline comments explaining critical decisions and known pitfalls.
+
+### go-style-guide.md Features
+
+The style guide template includes:
+- **Code Style**: Formatting, Effective Go compliance
+- **Project Structure**: Directory layout template
+- **Error Handling**: Wrapping, guard clauses
+- **Wails Integration**: Binding patterns, events
+- **Go Idioms & Professional Practices**:
+  - Naming conventions
+  - Function design (≤40 lines, single responsibility)
+  - Error handling idioms (errors.Is/As, typed errors)
+  - Package design & boundaries
+  - Context usage patterns
+  - Concurrency patterns (worker pools, errgroup)
+  - Struct & interface idioms
+  - Zero value philosophy
+  - Slice & map best practices
+  - Testing idioms
+  - Defensive programming
+  - AI agent enforcement rules
+- **Reference Links**: Official Go docs, Wails, golangci-lint
