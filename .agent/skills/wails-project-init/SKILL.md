@@ -56,6 +56,7 @@ Copy the following files from `templates/` directory into your project:
 | `updater.go` | `updater.go` |
 | `updater_test.go` | `updater_test.go` |
 | `go-style-guide.md` | `.agent/rules/go-style-guide.md` |
+| `go-idioms-reference.md` | `.agent/rules/go-idioms-reference.md` |
 
 ### 4. Update Project-Specific Values
 
@@ -63,7 +64,7 @@ After copying, update these placeholders:
 
 | Placeholder | Replace With | Used In |
 |-------------|--------------|----------|
-| `{{PROJECT_NAME}}` | Your project name (e.g., `sql-helper`) | go-style-guide.md, Makefile |
+| `{{PROJECT_NAME}}` | Your project name (e.g., `sql-helper`) | Both style guide files, Makefile |
 | `{{PROJECT_DESCRIPTION}}` | Brief project description | go-style-guide.md |
 | `{{DOMAIN}}` | Main domain package name (e.g., `excel`, `api`) | go-style-guide.md |
 | `{{GITHUB_OWNER}}` | Your GitHub username | updater.go |
@@ -312,35 +313,42 @@ All templates are in the `templates/` subdirectory:
 
 ```
 templates/
-├── ci.yml              # GitHub Actions CI workflow (tested on all platforms)
-├── release.yml         # GitHub Release automation
-├── golangci.yml        # Linter configuration
-├── Makefile            # Development commands
-├── updater.go          # Auto-update functionality
-├── updater_test.go     # Update tests
-└── go-style-guide.md   # Go style guide with idioms & best practices
+├── ci.yml                   # GitHub Actions CI workflow (tested on all platforms)
+├── release.yml              # GitHub Release automation
+├── golangci.yml             # Linter configuration
+├── Makefile                 # Development commands
+├── updater.go               # Auto-update functionality
+├── updater_test.go          # Update tests
+├── go-style-guide.md        # Core rules (~80 lines, loaded always)
+└── go-idioms-reference.md   # Full reference (~250 lines, on-demand)
 ```
 
 Each template contains inline comments explaining critical decisions and known pitfalls.
 
-### go-style-guide.md Features
+### Style Guide Structure (2-File System)
 
-The style guide template includes:
-- **Code Style**: Formatting, Effective Go compliance
-- **Project Structure**: Directory layout template
-- **Error Handling**: Wrapping, guard clauses
-- **Wails Integration**: Binding patterns, events
-- **Go Idioms & Professional Practices**:
-  - Naming conventions
-  - Function design (≤40 lines, single responsibility)
-  - Error handling idioms (errors.Is/As, typed errors)
-  - Package design & boundaries
-  - Context usage patterns
-  - Concurrency patterns (worker pools, errgroup)
-  - Struct & interface idioms
-  - Zero value philosophy
-  - Slice & map best practices
-  - Testing idioms
-  - Defensive programming
-  - AI agent enforcement rules
-- **Reference Links**: Official Go docs, Wails, golangci-lint
+For optimal token efficiency, the style guide is split into two files:
+
+#### `go-style-guide.md` (Core Rules - Always Loaded)
+- Project header & structure (~80 lines, ~1K tokens)
+- Error handling (compact)
+- Wails integration essentials
+- Testing & linting commands
+- **AI Agent Rules (Critical)**:
+  - Enforcement rules
+  - Context accuracy
+  - Library version awareness
+  - Context engineering principles
+
+#### `go-idioms-reference.md` (Full Reference - On Demand)
+- All Go idioms with code examples (~250 lines)
+- Naming conventions
+- Function design patterns
+- Error handling idioms
+- Package design & boundaries
+- Context & concurrency patterns
+- Struct & interface idioms
+- Testing patterns
+- Reference links
+
+> **Why split?** Based on [Tessl research](https://tessl.io/blog/making-claude-good-at-go-using-context-engineering-with-tessl/): "Right context at right time" reduces hallucinations by 35% and costs by 3x.
