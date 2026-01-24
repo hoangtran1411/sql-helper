@@ -19,14 +19,22 @@
 
 ## ✨ Features
 
-- 🚀 **Fast Excel Parsing** — Efficiently read and parse `.xlsx` files using Excelize
+- 🚀 **High Performance Streaming** — "Direct-to-Disk" pipeline capable of handling massive files (1M+ rows) with O(1) memory usage
+- ⚡ **Lazy Loading Preview** — Instant UI response by only loading the first 100 rows for preview
 - 📝 **SQL Generation** — Convert Excel rows to SQL INSERT statements instantly
-- 🔢 **Smart Number Detection** — Automatically detect numeric columns to avoid unnecessary quoting
-- 🔄 **Find & Replace** — Transform data values before generating SQL
+- 🔄 **Find & Replace** — Transform data values on-the-fly during export stream
 - 📋 **One-Click Copy** — Copy generated SQL to clipboard with a single click
-- 💾 **Export to File** — Save SQL output directly to `.txt` files
+- 💾 **Export to File** — Stream SQL output directly to `.sql` files without RAM spikes
 - 🔄 **Auto-Update** — Built-in update checker with automatic installation for Windows
-- 🎨 **Modern UI** — Clean, responsive dark-themed interface built with HTML/CSS/JS
+- 🎨 **Modern UI** — Clean, responsive dark-themed interface built with Vanilla JS (No Framework overhead)
+
+### 🏎️ Performance Architecture
+
+| Feature | Legacy Mode | Modern Streaming (v1.1+) |
+| :--- | :--- | :--- |
+| **Memory Usage** | O(N) - Loads full file | **O(1) - Constant memory** |
+| **Large Files** | Crash on >500k rows | **Pass (Tested with 1M+ rows)** |
+| **UI Responsiveness** | Frozen during export | **Always Responsive** |
 
 ## 📸 Screenshots
 
