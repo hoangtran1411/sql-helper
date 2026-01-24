@@ -28,30 +28,40 @@ func GenerateSQLValues(headers []string, dataRows [][]interface{}, numberColumns
 		if rowIdx > 0 {
 			builder.WriteString(",\n")
 		}
-		builder.WriteByte('(')
 
-		for i := 0; i < columnCount; i++ {
-			if i > 0 {
-				builder.WriteString(", ")
-			}
-
-			var cellValue interface{}
-			if i < len(row) {
-				cellValue = row[i]
-			}
-
-			header := ""
-			if i < len(headers) {
-				header = headers[i]
-			}
-
-			formatted := FormatCellValue(cellValue, numColSet[header])
-			builder.WriteString(formatted)
-		}
-
-		builder.WriteByte(')')
+		valStr := FormatRowSQL(row, headers, numColSet)
+		builder.WriteString(valStr)
 	}
 
+	return builder.String()
+}
+
+// FormatRowSQL formats a single row into SQL values format (val1, val2, ...)
+func FormatRowSQL(row []interface{}, headers []string, numColSet map[string]bool) string {
+	var builder strings.Builder
+	builder.WriteByte('(')
+
+	columnCount := len(headers)
+	for i := 0; i < columnCount; i++ {
+		if i > 0 {
+			builder.WriteString(", ")
+		}
+
+		var cellValue interface{}
+		if i < len(row) {
+			cellValue = row[i]
+		}
+
+		header := ""
+		if i < len(headers) {
+			header = headers[i]
+		}
+
+		formatted := FormatCellValue(cellValue, numColSet[header])
+		builder.WriteString(formatted)
+	}
+
+	builder.WriteByte(')')
 	return builder.String()
 }
 

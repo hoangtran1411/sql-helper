@@ -101,8 +101,8 @@ func TestParseExcelFile_InvalidPath(t *testing.T) {
 	}
 }
 
-func TestProcessSheet_InvalidPath(t *testing.T) {
-	_, err := ProcessSheet("nonexistent_file.xlsx", "Sheet1")
+func TestGetPreview_InvalidPath(t *testing.T) {
+	_, err := GetPreview("nonexistent_file.xlsx", "Sheet1", 100)
 	if err == nil {
 		t.Error("Expected error for nonexistent file, got nil")
 	}
@@ -167,7 +167,7 @@ func TestParseExcelFile_ValidFile(t *testing.T) {
 	}
 }
 
-func TestProcessSheet_ValidFile(t *testing.T) {
+func TestGetPreview_ValidFile(t *testing.T) {
 	tempDir := t.TempDir()
 	testData := [][]string{
 		{"ID", "Name", "Value"},
@@ -177,9 +177,9 @@ func TestProcessSheet_ValidFile(t *testing.T) {
 	}
 	filePath := createTestExcelFile(t, tempDir, testData)
 
-	data, err := ProcessSheet(filePath, "Sheet1")
+	data, err := GetPreview(filePath, "Sheet1", 100)
 	if err != nil {
-		t.Fatalf("ProcessSheet failed: %v", err)
+		t.Fatalf("GetPreview failed: %v", err)
 	}
 
 	// Check headers
@@ -204,14 +204,14 @@ func TestProcessSheet_ValidFile(t *testing.T) {
 	}
 }
 
-func TestProcessSheet_EmptySheet(t *testing.T) {
+func TestGetPreview_EmptySheet(t *testing.T) {
 	tempDir := t.TempDir()
 	testData := [][]string{} // Empty
 	filePath := createTestExcelFile(t, tempDir, testData)
 
-	data, err := ProcessSheet(filePath, "Sheet1")
+	data, err := GetPreview(filePath, "Sheet1", 100)
 	if err != nil {
-		t.Fatalf("ProcessSheet failed: %v", err)
+		t.Fatalf("GetPreview failed: %v", err)
 	}
 
 	if len(data.Headers) != 0 {
@@ -222,16 +222,16 @@ func TestProcessSheet_EmptySheet(t *testing.T) {
 	}
 }
 
-func TestProcessSheet_HeaderOnly(t *testing.T) {
+func TestGetPreview_HeaderOnly(t *testing.T) {
 	tempDir := t.TempDir()
 	testData := [][]string{
 		{"A", "B", "C"}, // Only headers, no data
 	}
 	filePath := createTestExcelFile(t, tempDir, testData)
 
-	data, err := ProcessSheet(filePath, "Sheet1")
+	data, err := GetPreview(filePath, "Sheet1", 100)
 	if err != nil {
-		t.Fatalf("ProcessSheet failed: %v", err)
+		t.Fatalf("GetPreview failed: %v", err)
 	}
 
 	if len(data.Headers) != 3 {
@@ -242,18 +242,18 @@ func TestProcessSheet_HeaderOnly(t *testing.T) {
 	}
 }
 
-func TestProcessSheet_InvalidSheetName(t *testing.T) {
+func TestGetPreview_InvalidSheetName(t *testing.T) {
 	tempDir := t.TempDir()
 	testData := [][]string{{"A", "B"}}
 	filePath := createTestExcelFile(t, tempDir, testData)
 
-	_, err := ProcessSheet(filePath, "NonExistentSheet")
+	_, err := GetPreview(filePath, "NonExistentSheet", 100)
 	if err == nil {
 		t.Error("Expected error for non-existent sheet, got nil")
 	}
 }
 
-func TestProcessSheet_SparseData(t *testing.T) {
+func TestGetPreview_SparseData(t *testing.T) {
 	tempDir := t.TempDir()
 	// Sparse data: some cells are empty
 	testData := [][]string{
@@ -264,9 +264,9 @@ func TestProcessSheet_SparseData(t *testing.T) {
 	}
 	filePath := createTestExcelFile(t, tempDir, testData)
 
-	data, err := ProcessSheet(filePath, "Sheet1")
+	data, err := GetPreview(filePath, "Sheet1", 100)
 	if err != nil {
-		t.Fatalf("ProcessSheet failed: %v", err)
+		t.Fatalf("GetPreview failed: %v", err)
 	}
 
 	// Check that empty cells are nil

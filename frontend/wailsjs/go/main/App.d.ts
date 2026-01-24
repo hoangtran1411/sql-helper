@@ -10,6 +10,8 @@ export function ExportToFile(arg1:string):Promise<void>;
 
 export function FindAndReplace(arg1:Array<any>,arg2:string,arg3:string):Promise<Array<any>>;
 
+export function GenerateAndSaveSQL(arg1:string,arg2:string,arg3:Array<string>,arg4:Array<string>,arg5:Array<main.Replacement>):Promise<void>;
+
 export function GenerateSQL(arg1:Array<string>,arg2:Array<any>,arg3:Array<string>):Promise<string>;
 
 export function GetCurrentVersion():Promise<string>;

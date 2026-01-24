@@ -18,6 +18,10 @@ export function FindAndReplace(arg1, arg2, arg3) {
   return window['go']['main']['App']['FindAndReplace'](arg1, arg2, arg3);
 }
 
+export function GenerateAndSaveSQL(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GenerateAndSaveSQL'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function GenerateSQL(arg1, arg2, arg3) {
   return window['go']['main']['App']['GenerateSQL'](arg1, arg2, arg3);
 }

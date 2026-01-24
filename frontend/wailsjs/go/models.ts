@@ -14,6 +14,20 @@ export namespace main {
 	        this.sheetNames = source["sheetNames"];
 	    }
 	}
+	export class Replacement {
+	    find: string;
+	    replace: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Replacement(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.find = source["find"];
+	        this.replace = source["replace"];
+	    }
+	}
 	export class SheetData {
 	    headers: string[];
 	    dataRows: any[][];
