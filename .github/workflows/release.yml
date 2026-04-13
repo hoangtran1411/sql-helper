@@ -44,7 +44,7 @@ jobs:
           Move-Item build/bin/sql-helper.exe build/bin/sql-helper-windows-amd64.exe
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: build/bin/sql-helper-windows-amd64.exe
