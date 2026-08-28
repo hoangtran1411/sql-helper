@@ -17,7 +17,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.24"
           cache: true
 
       - name: Run golangci-lint
@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        go-version: ["1.25"]
+        go-version: ["1.24"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,7 +86,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.24"
           cache: true
 
       - name: Install Wails v3 CLI
