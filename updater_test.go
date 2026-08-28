@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"testing"
 )
 
@@ -149,7 +148,6 @@ func TestCurrentVersionDefault(t *testing.T) {
 
 func TestGetCurrentVersion(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
 
 	version := app.GetCurrentVersion()
 	if version != CurrentVersion {

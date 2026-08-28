@@ -1,8 +1,11 @@
 /**
- * SQL Helper - Wails Frontend JavaScript
+ * SQL Helper - Wails v3 Frontend JavaScript
  * 
- * Frontend logic với Wails bindings để gọi Go backend.
+ * Frontend logic with Wails v3 ES module bindings.
  */
+
+import * as App from "./bindings/github.com/hoangtran1411/sql-helper/app.js";
+import { Events } from "@wailsio/runtime";
 
 // ===================================
 // Application State
@@ -33,7 +36,6 @@ const elements = {
     btnConfirmReplace: document.getElementById('btnConfirmReplace'),
 
     // Inputs
-    fileInput: document.getElementById('fileInput'),
     valueToFind: document.getElementById('valueToFind'),
     replacementValue: document.getElementById('replacementValue'),
     sqlResult: document.getElementById('sqlResult'),
@@ -67,11 +69,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bind event listeners
     bindEventListeners();
 
+    // Listen for backend progress events
+    if (Events && Events.On) {
+        Events.On('updateProgress', (event) => {
+            const msg = typeof event === 'string' ? event : (event?.data || 'Updating...');
+            showToast(msg, 'info');
+        });
+    }
+
     // Display version and check for updates
     displayCurrentVersion();
     checkUpdate();
 
-    console.log('SQL Helper initialized');
+    console.log('SQL Helper v3 initialized');
 });
 
 // ===================================
@@ -79,8 +89,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // ===================================
 async function displayCurrentVersion() {
     try {
-        const ver = await window.go.main.App.GetCurrentVersion();
-        elements.appVersion.textContent = ver;
+        const ver = await App.GetCurrentVersion();
+        if (ver) {
+            elements.appVersion.textContent = ver;
+        }
     } catch (err) {
         console.error('Failed to get version:', err);
     }
@@ -88,9 +100,9 @@ async function displayCurrentVersion() {
 
 async function checkUpdate() {
     try {
-        const info = await window.go.main.App.CheckForUpdate();
+        const info = await App.CheckForUpdate();
 
-        if (info.available) {
+        if (info && info.available) {
             elements.newVersionLabel.textContent = info.latestVersion;
             elements.updateBadge.style.display = 'inline-flex';
             elements.updateBadge.onclick = () => handleUpdate(info.downloadUrl);
@@ -100,20 +112,20 @@ async function checkUpdate() {
     }
 }
 
-// Global function for update handler
-window.handleUpdate = async (url) => {
+// Update handler
+async function handleUpdate(url) {
     if (!confirm('Download and install new update? The app will restart.')) {
         return;
     }
 
     showLoading(true);
     try {
-        await window.go.main.App.PerformUpdate(url);
+        await App.PerformUpdate(url);
     } catch (err) {
         showLoading(false);
         showToast('Update failed: ' + err, 'error');
     }
-};
+}
 
 // ===================================
 // Event Listeners
@@ -148,15 +160,16 @@ async function handleChooseFile() {
     showLoading(true);
 
     try {
-        const result = await window.go.main.App.OpenExcelFile();
+        const result = await App.OpenExcelFile();
 
-        if (!result || !result.filePath) {
+        const filePath = result.filePath || result.FilePath;
+        if (!result || !filePath) {
             showLoading(false);
             return; // User cancelled
         }
 
-        AppState.filePath = result.filePath;
-        AppState.sheetNames = result.sheetNames;
+        AppState.filePath = filePath;
+        AppState.sheetNames = result.sheetNames || result.SheetNames || [];
         handleSheetSelection();
     } catch (err) {
         showLoading(false);
@@ -209,10 +222,16 @@ async function processSheet(sheetName) {
     showLoading(true);
 
     try {
-        const result = await window.go.main.App.ProcessSheet(AppState.filePath, sheetName);
+        const result = await App.ProcessSheet(AppState.filePath, sheetName);
 
-        AppState.headers = result.headers;
-        AppState.dataRows = result.dataRows;
+        if (!result) {
+            showLoading(false);
+            showToast('Failed to read sheet data', 'error');
+            return;
+        }
+
+        AppState.headers = result.headers || result.Headers || [];
+        AppState.dataRows = result.dataRows || result.DataRows || [];
         AppState.numberColumns = [];
         AppState.replacements = [];
 
@@ -286,14 +305,14 @@ async function generateSQL() {
     showLoading(true);
 
     try {
-        const result = await window.go.main.App.GenerateSQL(
+        const result = await App.GenerateSQL(
             AppState.headers,
             AppState.dataRows,
             AppState.numberColumns
         );
 
-        AppState.sqlResult = result;
-        elements.sqlResult.value = result;
+        AppState.sqlResult = result || '';
+        elements.sqlResult.value = AppState.sqlResult;
         updateButtonStates();
         showLoading(false);
     } catch (err) {
@@ -319,7 +338,6 @@ function handleReplaceClick() {
         return;
     }
 
-    // Update message and show confirmation modal
     elements.confirmMessage.textContent =
         `This will replace all occurrences of "${findValue}" with "${replaceValue}". Continue?`;
     elements.confirmModal.show();
@@ -333,23 +351,19 @@ async function handleConfirmReplace() {
     showLoading(true);
 
     try {
-        // Call Go backend for replacement
-        AppState.dataRows = await window.go.main.App.FindAndReplace(
+        AppState.dataRows = await App.FindAndReplace(
             AppState.dataRows,
             findValue,
             replaceValue
         );
 
-        // Track replacement for export
         AppState.replacements.push({
             find: findValue,
             replace: replaceValue
         });
 
-        // Regenerate SQL
         await generateSQL();
 
-        // Clear inputs
         elements.valueToFind.value = '';
         elements.replacementValue.value = '';
 
@@ -370,7 +384,11 @@ async function handleCopy() {
     }
 
     try {
-        await window.go.main.App.CopyToClipboard(AppState.sqlResult);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(AppState.sqlResult);
+        } else {
+            await App.CopyToClipboard(AppState.sqlResult);
+        }
         showToast('Copied to clipboard!', 'success');
     } catch (err) {
         showToast('Failed to copy: ' + err, 'error');
@@ -384,16 +402,20 @@ async function handleExport() {
     }
 
     try {
-        await window.go.main.App.GenerateAndSaveSQL(
+        const saved = await App.GenerateAndSaveSQL(
             AppState.filePath,
             AppState.currentSheet,
             AppState.headers,
             AppState.numberColumns,
             AppState.replacements
         );
-        showToast('File exported successfully!', 'success');
+        if (saved) {
+            showToast('File exported successfully!', 'success');
+        }
     } catch (err) {
-        showToast('Failed to export: ' + err, 'error');
+        if (!String(err).toLowerCase().includes('cancel')) {
+            showToast('Failed to export: ' + err, 'error');
+        }
     }
 }
 
@@ -463,14 +485,10 @@ function showToast(message, type = 'info') {
     const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 3000 });
     toast.show();
 
-    // Remove toast element after hidden
     toastElement.addEventListener('hidden.bs.toast', () => {
         toastElement.remove();
     });
 }
 
-// ===================================
-// Expose for debugging (optional)
-// ===================================
+// Expose for debugging
 window.AppState = AppState;
-window.generateSQL = generateSQL;

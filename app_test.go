@@ -1,26 +1,17 @@
 package main
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/hoangtran1411/sql-helper/internal/excel"
 )
 
 func TestNewApp(t *testing.T) {
 	app := NewApp()
 	if app == nil {
 		t.Error("NewApp() returned nil")
-	}
-}
-
-func TestAppStartup(t *testing.T) {
-	app := NewApp()
-	ctx := context.Background()
-	app.startup(ctx)
-
-	if app.ctx == nil {
-		t.Error("startup() did not set ctx")
 	}
 }
 
@@ -39,7 +30,7 @@ func TestExcelResultStruct(t *testing.T) {
 }
 
 func TestSheetDataStruct(t *testing.T) {
-	data := SheetData{
+	data := excel.SheetData{
 		Headers:  []string{"Name", "Age"},
 		DataRows: [][]interface{}{{"John", 30}, {"Jane", 25}},
 	}

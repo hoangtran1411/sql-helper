@@ -6,8 +6,8 @@ import (
 
 // SheetData represents data from a processed sheet
 type SheetData struct {
-	Headers  []string
-	DataRows [][]interface{}
+	Headers  []string        `json:"headers"`
+	DataRows [][]interface{} `json:"dataRows"`
 }
 
 // ParseExcelFile opens an Excel file and returns the list of sheet names

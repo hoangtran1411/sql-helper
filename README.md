@@ -6,18 +6,18 @@
 
 [![CI](https://github.com/hoangtran1411/sql-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/hoangtran1411/sql-helper/actions/workflows/ci.yml)
 [![Release](https://github.com/hoangtran1411/sql-helper/actions/workflows/release.yml/badge.svg)](https://github.com/hoangtran1411/sql-helper/actions/workflows/release.yml)
-[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
-[![Wails](https://img.shields.io/badge/Wails-v2-DF0000?style=flat&logo=wails)](https://wails.io/)
+[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Wails](https://img.shields.io/badge/Wails-v3-DF0000?style=flat&logo=wails)](https://wails.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub release](https://img.shields.io/github/v/release/hoangtran1411/sql-helper?include_prereleases)](https://github.com/hoangtran1411/sql-helper/releases)
 
-[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Development](#-development) • [Contributing](#-contributing)
+[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Development](#development) • [Contributing](#contributing)
 
 </div>
 
 ---
 
-## ✨ Features
+## Features
 
 - 🚀 **High Performance Streaming** — "Direct-to-Disk" pipeline capable of handling massive files (1M+ rows) with O(1) memory usage
 - ⚡ **Lazy Loading Preview** — Instant UI response by only loading the first 100 rows for preview
@@ -28,7 +28,7 @@
 - 🔄 **Auto-Update** — Built-in update checker with automatic installation for Windows
 - 🎨 **Modern UI** — Clean, responsive dark-themed interface built with Vanilla JS (No Framework overhead)
 
-### 🏎️ Performance Architecture
+### Performance Architecture
 
 | Feature | Legacy Mode | Modern Streaming (v1.1+) |
 | :--- | :--- | :--- |
@@ -36,48 +36,48 @@
 | **Large Files** | Crash on >500k rows | **Pass (Tested with 1M+ rows)** |
 | **UI Responsiveness** | Frozen during export | **Always Responsive** |
 
-## 📸 Screenshots
+## Screenshots
 
 <div align="center">
 <img src="docs/screenshot.png" alt="SQL Helper Screenshot" width="800"/>
 </div>
 
-## 📥 Installation
+## Installation
 
 ### Download Pre-built Binaries
 
 Download the latest release for Windows from the [Releases](https://github.com/hoangtran1411/sql-helper/releases) page:
 
 | Platform | Download |
-|----------|----------|
+| :--- | :--- |
 | **Windows** (x64) | [`sql-helper-windows-amd64.exe`](https://github.com/hoangtran1411/sql-helper/releases/latest) |
 
 *Note: macOS and Linux builds are planned. For now, you can build from source.*
 
 ### Build from Source
 
-See the [Development](#-development) section for build instructions.
+See the [Development](#development) section for build instructions.
 
-## 🚀 Usage
+## Usage
 
 ### Quick Start
 
-1. **Open Excel File** — Click "Browse" to select your `.xlsx` file.
-2. **Select Sheet** — Choose the worksheet containing your data from the dropdown.
-3. **Configure Options** — Set the target **Table Name** and specify **Number Columns** (comma-separated indices, e.g., `1,3`).
-4. **Generate SQL** — Click "**Generate SQL**" to create INSERT statements.
-5. **Copy or Save** — Use the copy button for clipboard or export to a file.
+1. **Open Excel File** — Click "Choose Excel File" to select your `.xlsx` file.
+2. **Select Sheet** — Choose the worksheet containing your data from the modal if multi-sheet.
+3. **Configure Options** — Check **Numeric Columns** checkboxes to format numbers without quotes.
+4. **Copy or Export** — Use the Copy button for clipboard or Export button to stream directly to a `.sql` file.
 
 ### Excel File Format
 
 Your Excel file should follow a standard table structure:
+
 - **First Row**: Column headers (used as SQL column names).
 - **Subsequent Rows**: Data rows (transformed into individual VALUE tuples).
 
 **Example Data:**
 
 | ID | Name | Price | Status |
-|----|------|-------|--------|
+| :--- | :--- | :--- | :--- |
 | 1 | Product A | 25.50 | Active |
 | 2 | Product B | 40.00 | Inactive |
 
@@ -91,17 +91,16 @@ INSERT INTO products (ID, Name, Price, Status) VALUES
 
 ---
 
-## 🛠️ Development
+## Development
 
 ### Prerequisites
 
-- [Go 1.24+](https://go.dev/dl/)
-- [Node.js 20+](https://nodejs.org/)
-- [Wails CLI](https://wails.io/docs/gettingstarted/installation)
+- [Go 1.25+](https://go.dev/dl/)
+- [Wails v3 CLI](https://v3.wails.io/)
 
 ```bash
-# Install Wails CLI
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+# Install Wails v3 CLI
+go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 ```
 
 ### Clone & Build
@@ -124,8 +123,8 @@ make build-windows
 ### Available Commands
 
 | Command | Description |
-|---------|-------------|
-| `make dev` | Run in development mode with hot reload |
+| :--- | :--- |
+| `make dev` | Run in development mode with hot reload (`wails3 dev`) |
 | `make build` | Build production binary for current platform |
 | `make build-windows` | Cross-compile for Windows AMD64 |
 | `make test` | Run all Go unit tests |
@@ -135,20 +134,20 @@ make build-windows
 
 ### Project Structure
 
-```
+```text
 sql-helper/
-├── main.go              # Wails entry point
-├── app.go               # App struct with Wails bindings
+├── main.go              # Wails v3 entry point
+├── app.go               # App struct with Wails v3 services
 ├── updater.go           # Auto-update functionality (Windows)
 ├── internal/
 │   ├── excel/           # Excel parsing logic (Excelize)
 │   └── sql/             # SQL generation & formatting logic
-├── frontend/            # Vue/React/Svelte/Vanilla frontend
+├── frontend/            # Vanilla HTML/CSS/JS frontend
 ├── build/               # Build output & icons
 └── .github/workflows/   # CI/CD (Lint, Test, Release)
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please check our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
@@ -158,23 +157,22 @@ Contributions are welcome! Please check our [CONTRIBUTING.md](CONTRIBUTING.md) f
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📋 Roadmap
+## Roadmap
 
 - [ ] Multiple database dialect support (PostgreSQL, SQLite, Oracle)
 - [ ] Native macOS and Linux releases
-- [ ] Dark/Light mode toggle (currently Dark only)
+- [ ] Dark/Light mode toggle
 - [ ] Batch processing for multiple Excel files at once
 - [ ] Custom SQL templates (INSERT IGNORE, REPLACE INTO, etc.)
 
-## 📜 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- [Wails](https://wails.io/) — The amazing Go/Web hybrid framework.
-- [Excelize](https://github.com/xuri/excelize) — Powering the Excel parsing.
-- [Go-Ole](https://github.com/go-ole/go-ole) — Essential for Windows integration.
+- [Wails](https://wails.io/) — The Go desktop framework.
+- [Excelize](https://github.com/xuri/excelize) — Powering Excel parsing.
 
 ---
 

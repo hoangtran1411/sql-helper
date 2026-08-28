@@ -13,23 +13,23 @@ help:
 
 # Development mode
 dev:
-	wails dev
+	wails3 dev
 
 # Build production binary
 build:
-	wails build
+	wails3 build
 
 # Build for Windows
 build-windows:
-	wails build -platform windows/amd64
+	wails3 build -platform windows/amd64
 
 # Build for macOS
 build-darwin:
-	wails build -platform darwin/universal
+	wails3 build -platform darwin/universal
 
 # Build for Linux
 build-linux:
-	wails build -platform linux/amd64
+	wails3 build -platform linux/amd64
 
 # Run all tests
 test:

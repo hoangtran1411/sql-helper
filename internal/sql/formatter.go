@@ -29,25 +29,7 @@ func FormatCellValue(value interface{}, isNumeric bool) string {
 // FormatNumericValue formats a value for a numeric column
 func FormatNumericValue(value interface{}) string {
 	switch v := value.(type) {
-	case int:
-		return fmt.Sprintf("%d", v)
-	case int8:
-		return fmt.Sprintf("%d", v)
-	case int16:
-		return fmt.Sprintf("%d", v)
-	case int32:
-		return fmt.Sprintf("%d", v)
-	case int64:
-		return fmt.Sprintf("%d", v)
-	case uint:
-		return fmt.Sprintf("%d", v)
-	case uint8:
-		return fmt.Sprintf("%d", v)
-	case uint16:
-		return fmt.Sprintf("%d", v)
-	case uint32:
-		return fmt.Sprintf("%d", v)
-	case uint64:
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", v)
 	case float32:
 		return strconv.FormatFloat(float64(v), 'f', -1, 32)

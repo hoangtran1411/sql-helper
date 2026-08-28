@@ -2,7 +2,7 @@
 
 First off, thank you for considering contributing to SQL Helper! It's people like you that make this project better for everyone.
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
@@ -13,7 +13,7 @@ First off, thank you for considering contributing to SQL Helper! It's people lik
 - [Commit Messages](#commit-messages)
 - [Issue Guidelines](#issue-guidelines)
 
-## 📜 Code of Conduct
+## Code of Conduct
 
 This project and everyone participating in it is governed by our commitment to providing a welcoming and inclusive environment. By participating, you are expected to:
 
@@ -23,19 +23,18 @@ This project and everyone participating in it is governed by our commitment to p
 - Focus on what is best for the community
 - Show empathy towards other community members
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
 Before you begin, ensure you have the following installed:
 
-- [Go 1.23+](https://go.dev/dl/)
-- [Node.js 20+](https://nodejs.org/)
+- [Go 1.25+](https://go.dev/dl/)
 - [Git](https://git-scm.com/)
-- [Wails CLI](https://wails.io/docs/gettingstarted/installation)
+- [Wails v3 CLI](https://v3.wails.io/)
 
 ```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
+go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 ```
 
 ### Development Setup
@@ -43,32 +42,37 @@ go install github.com/wailsapp/wails/v2/cmd/wails@latest
 1. **Fork the repository** on GitHub
 
 2. **Clone your fork**
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/sql-helper.git
    cd sql-helper
    ```
 
 3. **Add upstream remote**
+
    ```bash
    git remote add upstream https://github.com/hoangtran1411/sql-helper.git
    ```
 
 4. **Install dependencies**
+
    ```bash
    go mod download
    ```
 
 5. **Install development tools**
+
    ```bash
    make install-tools
    ```
 
 6. **Run in development mode**
+
    ```bash
    make dev
    ```
 
-## 🔧 How to Contribute
+## How to Contribute
 
 ### Reporting Bugs
 
@@ -99,17 +103,19 @@ Feature requests are welcome! Please provide:
 4. Make your changes
 5. Submit a pull request
 
-## 🔀 Pull Request Process
+## Pull Request Process
 
 ### Before Submitting
 
 1. **Sync with upstream**
+
    ```bash
    git fetch upstream
    git rebase upstream/main
    ```
 
 2. **Create a feature branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -117,16 +123,19 @@ Feature requests are welcome! Please provide:
 3. **Make your changes** following our coding standards
 
 4. **Run tests**
+
    ```bash
    make test
    ```
 
 5. **Run linter**
+
    ```bash
    make lint
    ```
 
 6. **Format code**
+
    ```bash
    make fmt
    ```
@@ -134,6 +143,7 @@ Feature requests are welcome! Please provide:
 ### Submitting
 
 1. Push your branch to your fork
+
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -153,7 +163,7 @@ Feature requests are welcome! Please provide:
 - Maintain or improve test coverage
 - Address all review comments
 
-## 📏 Coding Standards
+## Coding Standards
 
 ### Go Code
 
@@ -165,7 +175,7 @@ Feature requests are welcome! Please provide:
 
 ### File Organization
 
-```
+```text
 internal/           # Private packages
 ├── excel/          # Excel parsing logic
 └── sql/            # SQL generation logic
@@ -174,7 +184,7 @@ internal/           # Private packages
 ### Naming Conventions
 
 | Type | Convention | Example |
-|------|------------|---------|
+| :--- | :--- | :--- |
 | Files | `snake_case.go` | `parser_test.go` |
 | Packages | `lowercase` | `excel`, `sql` |
 | Functions | `PascalCase` (exported) | `ParseExcelFile` |
@@ -208,11 +218,11 @@ if err != nil {
 }
 ```
 
-## 💬 Commit Messages
+## Commit Messages
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 <type>(<scope>): <subject>
 
 [optional body]
@@ -223,7 +233,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 ### Types
 
 | Type | Description |
-|------|-------------|
+| :--- | :--- |
 | `feat` | New feature |
 | `fix` | Bug fix |
 | `docs` | Documentation only |
@@ -236,7 +246,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ### Examples
 
-```
+```text
 feat(sql): add PostgreSQL dialect support
 
 fix(excel): handle empty cells correctly
@@ -247,7 +257,7 @@ docs: update README with new usage examples
 chore(deps): update Excelize to v2.9.0
 ```
 
-## 🐛 Issue Guidelines
+## Issue Guidelines
 
 ### Bug Reports
 
@@ -272,7 +282,7 @@ If applicable, add screenshots.
 **Environment:**
  - OS: [e.g., Windows 11]
  - Version: [e.g., v1.2.0]
- - Go Version: [e.g., 1.23]
+ - Go Version: [e.g., 1.25]
 ```
 
 ### Feature Requests
@@ -293,14 +303,14 @@ Any other context or screenshots.
 
 ---
 
-## 🙏 Thank You!
+## Thank You
 
 Your contributions make this project better. Whether it's:
 
-- 🐛 Reporting bugs
-- 💡 Suggesting features
-- 📝 Improving documentation
-- 🔧 Submitting code
+- Reporting bugs
+- Suggesting features
+- Improving documentation
+- Submitting code
 
 Every contribution is valued and appreciated!
 

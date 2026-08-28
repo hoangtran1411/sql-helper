@@ -2,29 +2,21 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hoangtran1411/sql-helper/internal/excel"
 	"github.com/hoangtran1411/sql-helper/internal/sql"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // App struct
-type App struct {
-	ctx context.Context
-}
+type App struct{}
 
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{}
-}
-
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
-func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
 }
 
 // ExcelResult represents the result of opening an Excel file
@@ -33,24 +25,23 @@ type ExcelResult struct {
 	SheetNames []string `json:"sheetNames"`
 }
 
-// SheetData represents data from a processed sheet
-type SheetData struct {
-	Headers  []string        `json:"headers"`
-	DataRows [][]interface{} `json:"dataRows"`
-}
-
 // OpenExcelFile opens a file dialog and parses the selected Excel file
 func (a *App) OpenExcelFile() (*ExcelResult, error) {
-	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+	dialog := application.Get().Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
 		Title: "Select Excel File",
-		Filters: []runtime.FileFilter{
+		Filters: []application.FileFilter{
 			{
 				DisplayName: "Excel Files (*.xlsx, *.xls)",
 				Pattern:     "*.xlsx;*.xls",
 			},
 		},
 	})
+
+	filePath, err := dialog.PromptForSingleSelection()
 	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "cancel") {
+			return nil, nil // User cancelled
+		}
 		return nil, err
 	}
 
@@ -70,17 +61,9 @@ func (a *App) OpenExcelFile() (*ExcelResult, error) {
 }
 
 // ProcessSheet reads data from a specific sheet
-func (a *App) ProcessSheet(filePath, sheetName string) (*SheetData, error) {
+func (a *App) ProcessSheet(filePath, sheetName string) (*excel.SheetData, error) {
 	// Limit preview to 100 rows for performance
-	data, err := excel.GetPreview(filePath, sheetName, 100)
-	if err != nil {
-		return nil, err
-	}
-
-	return &SheetData{
-		Headers:  data.Headers,
-		DataRows: data.DataRows,
-	}, nil
+	return excel.GetPreview(filePath, sheetName, 100)
 }
 
 // GenerateSQL generates SQL INSERT values from the data
@@ -96,26 +79,10 @@ func (a *App) FindAndReplace(dataRows [][]interface{}, findValue, replaceWith st
 
 // CopyToClipboard copies text to the clipboard
 func (a *App) CopyToClipboard(text string) error {
-	return runtime.ClipboardSetText(a.ctx, text)
-}
-
-// ExportToFile saves content to a file
-func (a *App) ExportToFile(content string) error {
-	savePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: "result.txt",
-		Filters: []runtime.FileFilter{
-			{DisplayName: "Text Files", Pattern: "*.txt"},
-		},
-	})
-	if err != nil {
-		return err
+	if !application.Get().Clipboard.SetText(text) {
+		return fmt.Errorf("failed to copy text to clipboard")
 	}
-
-	if savePath == "" {
-		return nil // User cancelled
-	}
-
-	return os.WriteFile(savePath, []byte(content), 0644)
+	return nil
 }
 
 // Replacement defines a find-and-replace rule
@@ -126,25 +93,33 @@ type Replacement struct {
 
 // GenerateAndSaveSQL streams data from Excel directly to a SQL file
 // This is memory efficient (O(1)) and can handle massive files
-func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, numberColumns []string, replacements []Replacement) error {
-	savePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: "output.sql",
-		Title:           "Save SQL File",
-		Filters: []runtime.FileFilter{
-			{DisplayName: "SQL Files", Pattern: "*.sql"},
+func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, numberColumns []string, replacements []Replacement) (bool, error) {
+	dialog := application.Get().Dialog.SaveFileWithOptions(&application.SaveFileDialogOptions{
+		Title:    "Save SQL File",
+		Filename: "output.sql",
+		Filters: []application.FileFilter{
+			{
+				DisplayName: "SQL Files (*.sql)",
+				Pattern:     "*.sql",
+			},
 		},
 	})
+
+	savePath, err := dialog.PromptForSingleSelection()
 	if err != nil {
-		return err
+		if strings.Contains(strings.ToLower(err.Error()), "cancel") {
+			return false, nil // User cancelled
+		}
+		return false, err
 	}
 	if savePath == "" {
-		return nil // User cancelled
+		return false, nil // User cancelled
 	}
 
 	// Create output file with buffered writer for performance
 	outFile, err := os.Create(savePath)
 	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
+		return false, fmt.Errorf("failed to create output file: %w", err)
 	}
 	defer outFile.Close()
 
@@ -162,8 +137,6 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, n
 	// Use the streaming iterator
 	err = excel.IterateSheet(filePath, sheetName, func(row []string) error {
 		// Apply replacements to raw strings first
-		// This matches the behavior of FindAndReplace on the interface{} slice
-		// since we are dealing with strings from Excel
 		for i := range row {
 			for _, r := range replacements {
 				if row[i] == r.Find {
@@ -173,7 +146,6 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, n
 		}
 
 		// Convert string row to interface row for the formatter
-		// Note: We use the headers from the frontend configuration to ensure alignment
 		interfaceRow := make([]interface{}, len(headers))
 		for i := 0; i < len(headers); i++ {
 			if i < len(row) && row[i] != "" {
@@ -201,8 +173,8 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, n
 	})
 
 	if err != nil {
-		return fmt.Errorf("streaming failed: %w", err)
+		return false, fmt.Errorf("streaming failed: %w", err)
 	}
 
-	return nil
+	return true, nil
 }

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // CurrentVersion is the application version
@@ -97,17 +97,13 @@ func (a *App) CheckForUpdate() UpdateInfo {
 }
 
 // CompareVersions returns true if v1 is newer than v2
-// Uses proper semantic version parsing (major.minor.patch)
 func CompareVersions(v1, v2 string) bool {
-	// Remove 'v' prefix
 	v1 = strings.TrimPrefix(v1, "v")
 	v2 = strings.TrimPrefix(v2, "v")
 
-	// Parse version parts
 	parts1 := parseVersion(v1)
 	parts2 := parseVersion(v2)
 
-	// Compare major, minor, patch in order
 	for i := range 3 {
 		if parts1[i] > parts2[i] {
 			return true
@@ -116,24 +112,21 @@ func CompareVersions(v1, v2 string) bool {
 			return false
 		}
 	}
-	return false // Equal versions
+	return false
 }
 
 // parseVersion splits version string into [major, minor, patch] integers
 func parseVersion(v string) [3]int {
 	var result [3]int
 	parts := strings.Split(v, ".")
-
 	for i := 0; i < len(parts) && i < 3; i++ {
-		// Parse integer, ignore errors (defaults to 0)
-		//nolint:errcheck // intentionally ignore parse errors, default to 0
+		//nolint:errcheck // default to 0 on parse failure
 		fmt.Sscanf(parts[i], "%d", &result[i])
 	}
 	return result
 }
 
 // PerformUpdate downloads and installs the new version (Windows only)
-// Downloads EXE directly and uses batch script to replace current exe
 func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	if downloadURL == "" {
 		return false, fmt.Errorf("no download URL provided")
@@ -154,10 +147,9 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	tempFile := filepath.Join(tempDir, "sql_helper_update.exe")
 
 	// Emit progress event
-	runtime.EventsEmit(a.ctx, "updateProgress", "Downloading update...")
+	application.Get().Event.Emit("updateProgress", "Downloading update...")
 
 	// Download new version
-	// Use a client with a long timeout for downloads
 	client := &http.Client{
 		Timeout: 30 * time.Minute,
 	}
@@ -177,22 +169,15 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 		return false, fmt.Errorf("failed to create temp file: %w", err)
 	}
 
-	// Download
 	_, err = io.Copy(out, resp.Body)
 	out.Close()
 	if err != nil {
 		return false, fmt.Errorf("failed to save update: %w", err)
 	}
 
-	runtime.EventsEmit(a.ctx, "updateProgress", "Installing update...")
+	application.Get().Event.Emit("updateProgress", "Installing update...")
 
 	// Create update batch script
-	// This script will:
-	// 1. Wait for current process to exit
-	// 2. Delete old exe
-	// 3. Move new exe to original location
-	// 4. Start the new exe
-	// 5. Delete itself
 	batchPath := filepath.Join(tempDir, "update_sql_helper.bat")
 	batchContent := fmt.Sprintf(`@echo off
 timeout /t 2 /nobreak >nul
@@ -213,12 +198,12 @@ del "%%~f0"
 	}
 
 	// Quit the application
-	runtime.Quit(a.ctx)
+	application.Get().Quit()
 
 	return true, nil
 }
 
 // OpenReleaseURL opens the release page in the default browser
 func (a *App) OpenReleaseURL(url string) {
-	runtime.BrowserOpenURL(a.ctx, url)
+	_ = application.Get().Browser.OpenURL(url)
 }
