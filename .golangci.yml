@@ -1,49 +1,53 @@
+version: "2"
 run:
-  timeout: 5m
   issues-exit-code: 1
   tests: true
-
 output:
   formats:
-    colored-line-number: stdout
-  print-issued-lines: true
-  print-linter-name: true
-  sort-results: true
-
+    text:
+      path: stdout
+      print-linter-name: true
+      print-issued-lines: true
 linters:
-  enable:
-    - errcheck
-    - govet
-    - staticcheck
-    - gofmt
-    - ineffassign
-    - unused
-    - gosimple
-    - typecheck
   disable:
     - depguard
-    - goimports
-
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  govet:
-    enable-all: false
-  gofmt:
-    simplify: true
-
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    govet:
+      enable-all: false
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+          - govet
+        path: _test\.go
+      - linters:
+          - gochecknoglobals
+        path: main\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-rules:
-    # Exclude test files from some checks
-    - path: _test\.go
-      linters:
-        - errcheck
-        - govet
-    # Exclude main.go from some checks
-    - path: main\.go
-      linters:
-        - gochecknoglobals
   max-issues-per-linter: 50
   max-same-issues: 10
-
+formatters:
+  enable:
+    - gofmt
+  settings:
+    gofmt:
+      simplify: true
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -204,6 +204,6 @@ del "%%~f0"
 }
 
 // OpenReleaseURL opens the release page in the default browser
-func (a *App) OpenReleaseURL(url string) {
-	_ = application.Get().Browser.OpenURL(url)
+func (a *App) OpenReleaseURL(url string) error {
+	return application.Get().Browser.OpenURL(url)
 }

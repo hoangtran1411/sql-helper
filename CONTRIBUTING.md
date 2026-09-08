@@ -29,7 +29,7 @@ This project and everyone participating in it is governed by our commitment to p
 
 Before you begin, ensure you have the following installed:
 
-- [Go 1.25+](https://go.dev/dl/)
+- [Go 1.27+](https://go.dev/dl/)
 - [Git](https://git-scm.com/)
 - [Wails v3 CLI](https://v3.wails.io/)
 
@@ -282,7 +282,7 @@ If applicable, add screenshots.
 **Environment:**
  - OS: [e.g., Windows 11]
  - Version: [e.g., v1.2.0]
- - Go Version: [e.g., 1.25]
+ - Go Version: [e.g., 1.27]
 ```
 
 ### Feature Requests

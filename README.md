@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/hoangtran1411/sql-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/hoangtran1411/sql-helper/actions/workflows/ci.yml)
 [![Release](https://github.com/hoangtran1411/sql-helper/actions/workflows/release.yml/badge.svg)](https://github.com/hoangtran1411/sql-helper/actions/workflows/release.yml)
-[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.27+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![Wails](https://img.shields.io/badge/Wails-v3-DF0000?style=flat&logo=wails)](https://wails.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub release](https://img.shields.io/github/v/release/hoangtran1411/sql-helper?include_prereleases)](https://github.com/hoangtran1411/sql-helper/releases)
@@ -95,7 +95,7 @@ INSERT INTO products (ID, Name, Price, Status) VALUES
 
 ### Prerequisites
 
-- [Go 1.25+](https://go.dev/dl/)
+- [Go 1.27+](https://go.dev/dl/)
 - [Wails v3 CLI](https://v3.wails.io/)
 
 ```bash
