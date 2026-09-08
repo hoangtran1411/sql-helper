@@ -66,9 +66,24 @@ func (a *App) ProcessSheet(filePath, sheetName string) (*excel.SheetData, error)
 	return excel.GetPreview(filePath, sheetName, 100)
 }
 
-// GenerateSQL generates SQL INSERT values from the data
-func (a *App) GenerateSQL(headers []string, dataRows [][]interface{}, numberColumns []string) (string, error) {
-	result := sql.GenerateSQLValues(headers, dataRows, numberColumns)
+// SQLOptions defines configuration for generating SQL statements
+type SQLOptions struct {
+	TableName       string   `json:"tableName"`
+	SelectedColumns []string `json:"selectedColumns"`
+	NumberColumns   []string `json:"numberColumns"`
+	BatchSize       int      `json:"batchSize"`
+	ValuesOnly      bool     `json:"valuesOnly"`
+}
+
+// GenerateSQL generates SQL INSERT statements (or raw values) from the data
+func (a *App) GenerateSQL(headers []string, dataRows [][]interface{}, options SQLOptions) (string, error) {
+	result := sql.GenerateBatchSQL(headers, dataRows, sql.GenerateOptions{
+		TableName:       options.TableName,
+		SelectedColumns: options.SelectedColumns,
+		NumberColumns:   options.NumberColumns,
+		BatchSize:       options.BatchSize,
+		ValuesOnly:      options.ValuesOnly,
+	})
 	return result, nil
 }
 
@@ -93,7 +108,7 @@ type Replacement struct {
 
 // GenerateAndSaveSQL streams data from Excel directly to a SQL file
 // This is memory efficient (O(1)) and can handle massive files
-func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, numberColumns []string, replacements []Replacement) (bool, error) {
+func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, options SQLOptions, replacements []Replacement) (bool, error) {
 	dialog := application.Get().Dialog.SaveFileWithOptions(&application.SaveFileDialogOptions{
 		Title:    "Save SQL File",
 		Filename: "output.sql",
@@ -121,18 +136,54 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, n
 	if err != nil {
 		return false, fmt.Errorf("failed to create output file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() {
+		_ = outFile.Close()
+	}()
 
 	writer := bufio.NewWriter(outFile)
-	defer writer.Flush()
+
+	// Determine selected columns and map indices
+	selectedCols := options.SelectedColumns
+	if len(selectedCols) == 0 {
+		selectedCols = headers
+	}
+	if len(selectedCols) == 0 {
+		return false, fmt.Errorf("no columns selected")
+	}
+
+	headerIndexMap := make(map[string]int, len(headers))
+	for i, h := range headers {
+		if _, exists := headerIndexMap[h]; !exists {
+			headerIndexMap[h] = i
+		}
+	}
+
+	colIndices := make([]int, 0, len(selectedCols))
+	validSelectedCols := make([]string, 0, len(selectedCols))
+	for _, col := range selectedCols {
+		if idx, ok := headerIndexMap[col]; ok {
+			colIndices = append(colIndices, idx)
+			validSelectedCols = append(validSelectedCols, col)
+		}
+	}
+	if len(validSelectedCols) == 0 {
+		return false, fmt.Errorf("no valid columns found to export")
+	}
 
 	// Prepare column set for fast lookup
-	numColSet := make(map[string]bool)
-	for _, col := range numberColumns {
+	numColSet := make(map[string]bool, len(options.NumberColumns))
+	for _, col := range options.NumberColumns {
 		numColSet[col] = true
 	}
 
-	firstRow := true
+	insertPrefix := sql.BuildInsertPrefix(options.TableName, validSelectedCols)
+	batchSize := options.BatchSize
+	if batchSize < 0 {
+		batchSize = 0
+	}
+
+	inBatchCount := 0
+	totalRows := 0
 
 	// Use the streaming iterator
 	err = excel.IterateSheet(filePath, sheetName, func(row []string) error {
@@ -155,25 +206,62 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, n
 			}
 		}
 
-		// Add comma separator for subsequent rows
-		if !firstRow {
-			if _, err := writer.WriteString(",\n"); err != nil {
+		if options.ValuesOnly {
+			if totalRows > 0 {
+				if _, err := writer.WriteString(",\n"); err != nil {
+					return err
+				}
+			}
+			valStr := sql.FormatRowSQLSelected(interfaceRow, colIndices, headers, numColSet)
+			if _, err := writer.WriteString(valStr); err != nil {
 				return err
+			}
+		} else {
+			if inBatchCount == 0 {
+				if totalRows > 0 {
+					if _, err := writer.WriteString("\n\n"); err != nil {
+						return err
+					}
+				}
+				if _, err := writer.WriteString(insertPrefix); err != nil {
+					return err
+				}
+			} else {
+				if _, err := writer.WriteString(",\n"); err != nil {
+					return err
+				}
+			}
+
+			valStr := sql.FormatRowSQLSelected(interfaceRow, colIndices, headers, numColSet)
+			if _, err := writer.WriteString(valStr); err != nil {
+				return err
+			}
+			inBatchCount++
+
+			if batchSize > 0 && inBatchCount == batchSize {
+				if _, err := writer.WriteString(";"); err != nil {
+					return err
+				}
+				inBatchCount = 0
 			}
 		}
 
-		// Format and write the row
-		valStr := sql.FormatRowSQL(interfaceRow, headers, numColSet)
-		if _, err := writer.WriteString(valStr); err != nil {
-			return err
-		}
-
-		firstRow = false
+		totalRows++
 		return nil
 	})
 
 	if err != nil {
 		return false, fmt.Errorf("streaming failed: %w", err)
+	}
+
+	if !options.ValuesOnly && inBatchCount > 0 {
+		if _, err := writer.WriteString(";"); err != nil {
+			return false, err
+		}
+	}
+
+	if err := writer.Flush(); err != nil {
+		return false, fmt.Errorf("failed to flush buffer: %w", err)
 	}
 
 	return true, nil

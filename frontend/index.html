@@ -86,17 +86,86 @@
             </div>
         </div>
 
-        <!-- Column Selector Card (Hidden by default) -->
-        <div class="card shadow-sm border-0 mb-4" id="columnSelectorCard" style="display: none;">
+        <!-- SQL Configuration Card -->
+        <div class="card shadow-sm border-0 mb-4" id="sqlConfigCard">
             <div class="card-header bg-white border-bottom-0 pt-3">
                 <h6 class="card-title mb-0 text-primary fw-bold">
-                    <i class="fas fa-list-check me-2"></i>Numeric Columns
+                    <i class="fas fa-sliders-h me-2"></i>SQL Configuration
                 </h6>
-                <small class="text-muted">Check columns that should be treated as numbers (no quotes in SQL)</small>
             </div>
             <div class="card-body">
-                <div id="columnCheckboxes" class="d-flex flex-wrap gap-3">
-                    <!-- Checkboxes will be dynamically added here -->
+                <div class="row align-items-center g-3">
+                    <!-- Statement Format Toggle -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold mb-1">Statement Format</label>
+                        <div class="btn-group w-100" role="group" aria-label="Statement format">
+                            <input type="radio" class="btn-check" name="stmtFormat" id="formatInsert" value="insert" checked>
+                            <label class="btn btn-outline-primary" for="formatInsert">
+                                <i class="fas fa-layer-group me-1"></i>INSERT INTO
+                            </label>
+
+                            <input type="radio" class="btn-check" name="stmtFormat" id="formatValues" value="values">
+                            <label class="btn btn-outline-primary" for="formatValues">
+                                <i class="fas fa-list-ol me-1"></i>Values Only
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Table Name Input -->
+                    <div class="col-md-5" id="tableNameGroup">
+                        <label for="tableNameInput" class="form-label fw-semibold mb-1">Table Name</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-table"></i></span>
+                            <input type="text" class="form-control" id="tableNameInput" placeholder="e.g. users or sheet name">
+                        </div>
+                    </div>
+
+                    <!-- Batch Size Input -->
+                    <div class="col-md-3" id="batchSizeGroup">
+                        <label for="batchSizeInput" class="form-label fw-semibold mb-1">
+                            Batch Size <small class="text-muted fw-normal">(0 = unlimited)</small>
+                        </label>
+                        <input type="number" class="form-control" id="batchSizeInput" min="0" step="100" value="1000" placeholder="1000">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columns Configuration Card (Hidden by default) -->
+        <div class="card shadow-sm border-0 mb-4" id="columnSelectorCard" style="display: none;">
+            <div class="card-header bg-white border-bottom-0 pt-3">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h6 class="card-title mb-0 text-primary fw-bold">
+                            <i class="fas fa-columns me-2"></i>Column Selection &amp; Types
+                        </h6>
+                        <small class="text-muted">Choose columns to include in SQL and mark numeric types (unquoted)</small>
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-primary" id="btnSelectAllCols">
+                            <i class="fas fa-check-double me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="btnDeselectAllCols">
+                            <i class="fas fa-times me-1"></i>Deselect All
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 240px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0" id="columnTable">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th style="width: 50px;" class="text-center">#</th>
+                                <th>Column Header</th>
+                                <th style="width: 140px;" class="text-center">Include in SQL</th>
+                                <th style="width: 140px;" class="text-center">Is Numeric</th>
+                            </tr>
+                        </thead>
+                        <tbody id="columnTableBody">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

@@ -45,24 +45,21 @@ body {
 /* Target the main container via direct child of body if possible, or use class */
 body>.container {
     flex-grow: 1;
-    overflow: hidden;
-    /* CRITICAL: Hide outer scrollbar */
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     max-width: 100%;
-    padding-bottom: 0.5rem;
-    /* Small bottom padding */
+    padding-bottom: 1.5rem;
     height: 100%;
 }
 
-/* Make the last card (SQL Result) fill remaining space but NOT expand beyond viewport */
+/* Make the last card (SQL Result) fill remaining space or maintain comfortable size */
 body>.container>.card:last-child {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0;
-    /* CRITICAL: Allow flex item to shrink below content size */
-    margin-bottom: 0 !important;
+    min-height: 300px;
+    margin-bottom: 1rem !important;
 }
 
 body>.container>.card:last-child .card-body {
@@ -70,17 +67,15 @@ body>.container>.card:last-child .card-body {
     display: flex;
     flex-direction: column;
     padding: 1rem;
-    overflow: hidden;
-    /* Clip anything that protrudes */
 }
 
 /* ----- Textarea Styles ----- */
 #sqlResult {
-    resize: none;
+    resize: vertical;
     flex-grow: 1;
     height: 100%;
     width: 100%;
-    min-height: 0;
+    min-height: 240px;
     background-color: #f8f9fa;
     border: 1px solid #e9ecef;
     font-size: 0.875rem;
@@ -233,21 +228,7 @@ body>.container>.card:last-child .card-body {
 }
 
 /* ----- Animations ----- */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.card {
-    animation: fadeIn 0.3s ease-out;
-}
+/* Subtle initial animations only if needed */
 
 /* ----- Scrollbar Styles ----- */
 ::-webkit-scrollbar {

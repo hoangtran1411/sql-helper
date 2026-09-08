@@ -204,3 +204,152 @@ func TestFindAndReplace(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatIdentifier(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"col", "col"},
+		{"productioncode", "productioncode"},
+		{"Order ID", "[Order ID]"},
+		{"first name", "[first name]"},
+		{"[pre_bracketed]", "[pre_bracketed]"},
+		{"", ""},
+		{"   ", ""},
+	}
+
+	for _, tt := range tests {
+		result := FormatIdentifier(tt.input)
+		if result != tt.expected {
+			t.Errorf("FormatIdentifier(%q) = %q; want %q", tt.input, result, tt.expected)
+		}
+	}
+}
+
+func TestBuildInsertPrefix(t *testing.T) {
+	tests := []struct {
+		tableName string
+		columns   []string
+		expected  string
+	}{
+		{
+			tableName: "users",
+			columns:   []string{"id", "name"},
+			expected:  "INSERT INTO users (id, name) VALUES\n",
+		},
+		{
+			tableName: "",
+			columns:   []string{"col1"},
+			expected:  "INSERT INTO my_table (col1) VALUES\n",
+		},
+		{
+			tableName: "Order Details",
+			columns:   []string{"order id", "item code"},
+			expected:  "INSERT INTO [Order Details] ([order id], [item code]) VALUES\n",
+		},
+	}
+
+	for _, tt := range tests {
+		result := BuildInsertPrefix(tt.tableName, tt.columns)
+		if result != tt.expected {
+			t.Errorf("BuildInsertPrefix(%q, %v) = %q; want %q", tt.tableName, tt.columns, result, tt.expected)
+		}
+	}
+}
+
+func TestGenerateBatchSQL(t *testing.T) {
+	headers := []string{"id", "name", "age", "status"}
+	dataRows := [][]interface{}{
+		{1, "Alice", 25, "active"},
+		{2, "Bob", 30, "pending"},
+		{3, "Charlie", 35, "active"},
+	}
+
+	t.Run("default batch all columns single statement", func(t *testing.T) {
+		opts := GenerateOptions{
+			TableName:     "users",
+			NumberColumns: []string{"id", "age"},
+			BatchSize:     1000,
+		}
+		expected := "INSERT INTO users (id, name, age, status) VALUES\n" +
+			"(1, 'Alice', 25, 'active'),\n" +
+			"(2, 'Bob', 30, 'pending'),\n" +
+			"(3, 'Charlie', 35, 'active');"
+
+		result := GenerateBatchSQL(headers, dataRows, opts)
+		if result != expected {
+			t.Errorf("GenerateBatchSQL() =\n%s\nwant:\n%s", result, expected)
+		}
+	})
+
+	t.Run("chunked batches with batchSize 2", func(t *testing.T) {
+		opts := GenerateOptions{
+			TableName:     "users",
+			NumberColumns: []string{"id", "age"},
+			BatchSize:     2,
+		}
+		expected := "INSERT INTO users (id, name, age, status) VALUES\n" +
+			"(1, 'Alice', 25, 'active'),\n" +
+			"(2, 'Bob', 30, 'pending');\n\n" +
+			"INSERT INTO users (id, name, age, status) VALUES\n" +
+			"(3, 'Charlie', 35, 'active');"
+
+		result := GenerateBatchSQL(headers, dataRows, opts)
+		if result != expected {
+			t.Errorf("GenerateBatchSQL() =\n%s\nwant:\n%s", result, expected)
+		}
+	})
+
+	t.Run("column selection subset", func(t *testing.T) {
+		opts := GenerateOptions{
+			TableName:       "production",
+			SelectedColumns: []string{"name", "status"},
+			BatchSize:       1000,
+		}
+		expected := "INSERT INTO production (name, status) VALUES\n" +
+			"('Alice', 'active'),\n" +
+			"('Bob', 'pending'),\n" +
+			"('Charlie', 'active');"
+
+		result := GenerateBatchSQL(headers, dataRows, opts)
+		if result != expected {
+			t.Errorf("GenerateBatchSQL() =\n%s\nwant:\n%s", result, expected)
+		}
+	})
+
+	t.Run("values only mode", func(t *testing.T) {
+		opts := GenerateOptions{
+			SelectedColumns: []string{"id", "name"},
+			NumberColumns:   []string{"id"},
+			ValuesOnly:      true,
+		}
+		expected := "(1, 'Alice'),\n(2, 'Bob'),\n(3, 'Charlie')"
+
+		result := GenerateBatchSQL(headers, dataRows, opts)
+		if result != expected {
+			t.Errorf("GenerateBatchSQL() =\n%s\nwant:\n%s", result, expected)
+		}
+	})
+
+	t.Run("empty rows", func(t *testing.T) {
+		opts := GenerateOptions{
+			TableName: "users",
+		}
+		result := GenerateBatchSQL(headers, nil, opts)
+		if result != "" {
+			t.Errorf("Expected empty string for nil rows, got %q", result)
+		}
+	})
+
+	t.Run("invalid or non-matching selected columns", func(t *testing.T) {
+		opts := GenerateOptions{
+			TableName:       "users",
+			SelectedColumns: []string{"nonexistent"},
+		}
+		result := GenerateBatchSQL(headers, dataRows, opts)
+		if result != "" {
+			t.Errorf("Expected empty string for non-matching columns, got %q", result)
+		}
+	})
+}

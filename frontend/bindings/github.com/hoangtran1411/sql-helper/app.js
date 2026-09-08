@@ -57,23 +57,23 @@ export function FindAndReplace(dataRows, findValue, replaceWith) {
  * @param {string} filePath
  * @param {string} sheetName
  * @param {string[]} headers
- * @param {string[]} numberColumns
+ * @param {$models.SQLOptions} options
  * @param {$models.Replacement[]} replacements
  * @returns {$CancellablePromise<boolean>}
  */
-export function GenerateAndSaveSQL(filePath, sheetName, headers, numberColumns, replacements) {
-    return $Call.ByID(2044828258, filePath, sheetName, headers, numberColumns, replacements);
+export function GenerateAndSaveSQL(filePath, sheetName, headers, options, replacements) {
+    return $Call.ByID(2044828258, filePath, sheetName, headers, options, replacements);
 }
 
 /**
- * GenerateSQL generates SQL INSERT values from the data
+ * GenerateSQL generates SQL INSERT statements (or raw values) from the data
  * @param {string[]} headers
  * @param {any[][]} dataRows
- * @param {string[]} numberColumns
+ * @param {$models.SQLOptions} options
  * @returns {$CancellablePromise<string>}
  */
-export function GenerateSQL(headers, dataRows, numberColumns) {
-    return $Call.ByID(3077652598, headers, dataRows, numberColumns);
+export function GenerateSQL(headers, dataRows, options) {
+    return $Call.ByID(3077652598, headers, dataRows, options);
 }
 
 /**

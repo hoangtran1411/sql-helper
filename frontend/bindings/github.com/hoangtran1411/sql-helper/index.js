@@ -10,5 +10,6 @@ export {
 export {
     ExcelResult,
     Replacement,
+    SQLOptions,
     UpdateInfo
 } from "./models.js";

@@ -87,6 +87,73 @@ export class Replacement {
 }
 
 /**
+ * SQLOptions defines configuration for generating SQL statements
+ */
+export class SQLOptions {
+    /**
+     * Creates a new SQLOptions instance.
+     * @param {Partial<SQLOptions>} [$$source = {}] - The source object to create the SQLOptions.
+     */
+    constructor($$source = {}) {
+        if (!("tableName" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["tableName"] = "";
+        }
+        if (!("selectedColumns" in $$source)) {
+            /**
+             * @member
+             * @type {string[]}
+             */
+            this["selectedColumns"] = [];
+        }
+        if (!("numberColumns" in $$source)) {
+            /**
+             * @member
+             * @type {string[]}
+             */
+            this["numberColumns"] = [];
+        }
+        if (!("batchSize" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["batchSize"] = 0;
+        }
+        if (!("valuesOnly" in $$source)) {
+            /**
+             * @member
+             * @type {boolean}
+             */
+            this["valuesOnly"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SQLOptions instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {SQLOptions}
+     */
+    static createFrom($$source = {}) {
+        const $$createField1_0 = $$createType0;
+        const $$createField2_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("selectedColumns" in $$parsedSource) {
+            $$parsedSource["selectedColumns"] = $$createField1_0($$parsedSource["selectedColumns"]);
+        }
+        if ("numberColumns" in $$parsedSource) {
+            $$parsedSource["numberColumns"] = $$createField2_0($$parsedSource["numberColumns"]);
+        }
+        return new SQLOptions(/** @type {Partial<SQLOptions>} */($$parsedSource));
+    }
+}
+
+/**
  * UpdateInfo holds information about available updates
  */
 export class UpdateInfo {

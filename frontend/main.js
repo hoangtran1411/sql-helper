@@ -16,7 +16,11 @@ const AppState = {
     currentSheet: '',
     headers: [],
     dataRows: [],
+    selectedColumns: [],
     numberColumns: [],
+    tableName: '',
+    batchSize: 1000,
+    valuesOnly: false,
     replacements: [],
     sqlResult: '',
     isProcessing: false
@@ -34,16 +38,24 @@ const elements = {
     btnClear: document.getElementById('btnClear'),
     btnProcessSheet: document.getElementById('btnProcessSheet'),
     btnConfirmReplace: document.getElementById('btnConfirmReplace'),
+    btnSelectAllCols: document.getElementById('btnSelectAllCols'),
+    btnDeselectAllCols: document.getElementById('btnDeselectAllCols'),
 
     // Inputs
     valueToFind: document.getElementById('valueToFind'),
     replacementValue: document.getElementById('replacementValue'),
     sqlResult: document.getElementById('sqlResult'),
     sheetSelect: document.getElementById('sheetSelect'),
+    formatInsert: document.getElementById('formatInsert'),
+    formatValues: document.getElementById('formatValues'),
+    tableNameInput: document.getElementById('tableNameInput'),
+    batchSizeInput: document.getElementById('batchSizeInput'),
 
-    // Containers
+    // Containers & Groups
+    tableNameGroup: document.getElementById('tableNameGroup'),
+    batchSizeGroup: document.getElementById('batchSizeGroup'),
     columnSelectorCard: document.getElementById('columnSelectorCard'),
-    columnCheckboxes: document.getElementById('columnCheckboxes'),
+    columnTableBody: document.getElementById('columnTableBody'),
     loadingOverlay: document.getElementById('loadingOverlay'),
     toastContainer: document.getElementById('toastContainer'),
     confirmMessage: document.getElementById('confirmMessage'),
@@ -57,6 +69,19 @@ const elements = {
     updateBadge: document.getElementById('updateBadge'),
     newVersionLabel: document.getElementById('newVersionLabel')
 };
+
+// ===================================
+// Helper functions
+// ===================================
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 
 // ===================================
 // Initialize
@@ -146,6 +171,35 @@ function bindEventListeners() {
     // Sheet selection
     elements.btnProcessSheet.addEventListener('click', handleProcessSheet);
 
+    // SQL Format & Config
+    if (elements.formatInsert && elements.formatValues) {
+        elements.formatInsert.addEventListener('change', handleFormatChange);
+        elements.formatValues.addEventListener('change', handleFormatChange);
+    }
+
+    if (elements.tableNameInput) {
+        elements.tableNameInput.addEventListener('input', (e) => {
+            AppState.tableName = e.target.value.trim();
+            debouncedGenerateSQL(150);
+        });
+    }
+
+    if (elements.batchSizeInput) {
+        elements.batchSizeInput.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            AppState.batchSize = isNaN(val) || val < 0 ? 0 : val;
+            debouncedGenerateSQL(150);
+        });
+    }
+
+    // Column selection shortcuts
+    if (elements.btnSelectAllCols) {
+        elements.btnSelectAllCols.addEventListener('click', handleSelectAllColumns);
+    }
+    if (elements.btnDeselectAllCols) {
+        elements.btnDeselectAllCols.addEventListener('click', handleDeselectAllColumns);
+    }
+
     // SQL textarea change
     elements.sqlResult.addEventListener('input', (e) => {
         AppState.sqlResult = e.target.value;
@@ -218,6 +272,17 @@ function handleProcessSheet() {
     processSheet(selectedSheet);
 }
 
+function handleFormatChange() {
+    AppState.valuesOnly = elements.formatValues.checked;
+    if (elements.tableNameGroup && elements.batchSizeGroup) {
+        elements.tableNameGroup.style.opacity = AppState.valuesOnly ? '0.5' : '1';
+        elements.batchSizeGroup.style.opacity = AppState.valuesOnly ? '0.5' : '1';
+        elements.tableNameInput.disabled = AppState.valuesOnly;
+        elements.batchSizeInput.disabled = AppState.valuesOnly;
+    }
+    generateSQL();
+}
+
 async function processSheet(sheetName) {
     showLoading(true);
 
@@ -232,8 +297,17 @@ async function processSheet(sheetName) {
 
         AppState.headers = result.headers || result.Headers || [];
         AppState.dataRows = result.dataRows || result.DataRows || [];
+        AppState.selectedColumns = [...AppState.headers]; // default: all columns selected
         AppState.numberColumns = [];
         AppState.replacements = [];
+        AppState.tableName = sheetName;
+
+        if (elements.tableNameInput) {
+            elements.tableNameInput.value = sheetName;
+        }
+        if (elements.batchSizeInput && !elements.batchSizeInput.value) {
+            elements.batchSizeInput.value = AppState.batchSize;
+        }
 
         renderColumnSelector();
         await generateSQL();
@@ -255,28 +329,63 @@ function renderColumnSelector() {
     }
 
     elements.columnSelectorCard.style.display = 'block';
-    elements.columnCheckboxes.innerHTML = '';
+    elements.columnTableBody.innerHTML = '';
 
     AppState.headers.forEach((header, index) => {
-        const div = document.createElement('div');
-        div.className = 'form-check';
-        div.innerHTML = `
-            <input class="form-check-input" type="checkbox" 
-                   id="col-${index}" 
-                   data-header="${header}"
-                   ${AppState.numberColumns.includes(header) ? 'checked' : ''}>
-            <label class="form-check-label" for="col-${index}">${header}</label>
+        const tr = document.createElement('tr');
+        const isSelected = AppState.selectedColumns.includes(header);
+        const isNumeric = AppState.numberColumns.includes(header);
+
+        tr.innerHTML = `
+            <td class="text-center text-muted fw-semibold">${index + 1}</td>
+            <td class="fw-medium">${escapeHtml(header)}</td>
+            <td class="text-center">
+                <div class="form-check d-inline-block">
+                    <input class="form-check-input col-include-check" type="checkbox" 
+                           id="col-inc-${index}" data-header="${escapeHtml(header)}"
+                           ${isSelected ? 'checked' : ''}>
+                </div>
+            </td>
+            <td class="text-center">
+                <div class="form-check d-inline-block">
+                    <input class="form-check-input col-numeric-check" type="checkbox" 
+                           id="col-num-${index}" data-header="${escapeHtml(header)}"
+                           ${isNumeric ? 'checked' : ''} ${isSelected ? '' : 'disabled'}>
+                </div>
+            </td>
         `;
-        elements.columnCheckboxes.appendChild(div);
+        elements.columnTableBody.appendChild(tr);
     });
 
     // Bind checkbox events
-    elements.columnCheckboxes.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-        checkbox.addEventListener('change', handleColumnToggle);
+    elements.columnTableBody.querySelectorAll('.col-include-check').forEach(chk => {
+        chk.addEventListener('change', handleColumnIncludeToggle);
+    });
+    elements.columnTableBody.querySelectorAll('.col-numeric-check').forEach(chk => {
+        chk.addEventListener('change', handleColumnNumericToggle);
     });
 }
 
-async function handleColumnToggle(event) {
+async function handleColumnIncludeToggle(event) {
+    const header = event.target.dataset.header;
+    const isChecked = event.target.checked;
+    const tr = event.target.closest('tr');
+    const numCheck = tr ? tr.querySelector('.col-numeric-check') : null;
+
+    if (isChecked) {
+        if (!AppState.selectedColumns.includes(header)) {
+            AppState.selectedColumns.push(header);
+        }
+        if (numCheck) numCheck.disabled = false;
+    } else {
+        AppState.selectedColumns = AppState.selectedColumns.filter(h => h !== header);
+        if (numCheck) numCheck.disabled = true;
+    }
+
+    await generateSQL();
+}
+
+async function handleColumnNumericToggle(event) {
     const header = event.target.dataset.header;
     const isChecked = event.target.checked;
 
@@ -291,32 +400,73 @@ async function handleColumnToggle(event) {
     await generateSQL();
 }
 
+let debounceTimer = null;
+function debouncedGenerateSQL(delay = 150) {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        generateSQL();
+    }, delay);
+}
+
+function updateColumnCheckboxes() {
+    if (!elements.columnTableBody) return;
+    elements.columnTableBody.querySelectorAll('tr').forEach(tr => {
+        const incCheck = tr.querySelector('.col-include-check');
+        const numCheck = tr.querySelector('.col-numeric-check');
+        if (incCheck) {
+            const h = incCheck.dataset.header;
+            const isSelected = AppState.selectedColumns.includes(h);
+            incCheck.checked = isSelected;
+            if (numCheck) {
+                numCheck.disabled = !isSelected;
+                numCheck.checked = AppState.numberColumns.includes(h);
+            }
+        }
+    });
+}
+
+async function handleSelectAllColumns() {
+    AppState.selectedColumns = [...AppState.headers];
+    updateColumnCheckboxes();
+    await generateSQL();
+}
+
+async function handleDeselectAllColumns() {
+    AppState.selectedColumns = [];
+    updateColumnCheckboxes();
+    await generateSQL();
+}
+
 // ===================================
 // SQL Generation
 // ===================================
 async function generateSQL() {
-    if (AppState.dataRows.length === 0) {
+    if (AppState.dataRows.length === 0 || AppState.selectedColumns.length === 0) {
         AppState.sqlResult = '';
         elements.sqlResult.value = '';
         updateButtonStates();
         return;
     }
 
-    showLoading(true);
-
     try {
+        const options = {
+            tableName: AppState.tableName || AppState.currentSheet || 'my_table',
+            selectedColumns: AppState.selectedColumns,
+            numberColumns: AppState.numberColumns,
+            batchSize: typeof AppState.batchSize === 'number' ? AppState.batchSize : 1000,
+            valuesOnly: AppState.valuesOnly
+        };
+
         const result = await App.GenerateSQL(
             AppState.headers,
             AppState.dataRows,
-            AppState.numberColumns
+            options
         );
 
         AppState.sqlResult = result || '';
         elements.sqlResult.value = AppState.sqlResult;
         updateButtonStates();
-        showLoading(false);
     } catch (err) {
-        showLoading(false);
         showToast('Error generating SQL: ' + err, 'error');
     }
 }
@@ -402,11 +552,19 @@ async function handleExport() {
     }
 
     try {
+        const options = {
+            tableName: AppState.tableName || AppState.currentSheet || 'my_table',
+            selectedColumns: AppState.selectedColumns,
+            numberColumns: AppState.numberColumns,
+            batchSize: typeof AppState.batchSize === 'number' ? AppState.batchSize : 1000,
+            valuesOnly: AppState.valuesOnly
+        };
+
         const saved = await App.GenerateAndSaveSQL(
             AppState.filePath,
             AppState.currentSheet,
             AppState.headers,
-            AppState.numberColumns,
+            options,
             AppState.replacements
         );
         if (saved) {
@@ -422,14 +580,17 @@ async function handleExport() {
 function handleClear() {
     AppState.headers = [];
     AppState.dataRows = [];
+    AppState.selectedColumns = [];
     AppState.numberColumns = [];
     AppState.replacements = [];
     AppState.sqlResult = '';
     AppState.currentSheet = '';
+    AppState.tableName = '';
 
     elements.sqlResult.value = '';
+    if (elements.tableNameInput) elements.tableNameInput.value = '';
     elements.columnSelectorCard.style.display = 'none';
-    elements.columnCheckboxes.innerHTML = '';
+    if (elements.columnTableBody) elements.columnTableBody.innerHTML = '';
 
     updateButtonStates();
     showToast('Result cleared.', 'info');

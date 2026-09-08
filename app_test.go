@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hoangtran1411/sql-helper/internal/excel"
@@ -64,9 +65,14 @@ func TestAppGenerateSQL(t *testing.T) {
 		{1, "John", 30},
 		{2, "Jane", 25},
 	}
-	numberColumns := []string{"id", "age"}
+	opts := SQLOptions{
+		TableName:       "users",
+		SelectedColumns: []string{"id", "name"},
+		NumberColumns:   []string{"id"},
+		BatchSize:       1000,
+	}
 
-	result, err := app.GenerateSQL(headers, dataRows, numberColumns)
+	result, err := app.GenerateSQL(headers, dataRows, opts)
 	if err != nil {
 		t.Errorf("GenerateSQL() returned error: %v", err)
 	}
@@ -74,9 +80,9 @@ func TestAppGenerateSQL(t *testing.T) {
 		t.Error("GenerateSQL() returned empty string")
 	}
 
-	// Should contain VALUES keyword
-	if len(result) < 10 {
-		t.Error("GenerateSQL() result too short")
+	// Should contain INSERT INTO and VALUES keyword
+	if !strings.Contains(result, "INSERT INTO users (id, name) VALUES") {
+		t.Errorf("GenerateSQL() result does not contain expected prefix: %s", result)
 	}
 }
 
@@ -85,15 +91,17 @@ func TestAppGenerateSQLEmptyData(t *testing.T) {
 
 	headers := []string{}
 	dataRows := [][]interface{}{}
-	numberColumns := []string{}
+	opts := SQLOptions{}
 
-	result, err := app.GenerateSQL(headers, dataRows, numberColumns)
+	result, err := app.GenerateSQL(headers, dataRows, opts)
 	if err != nil {
 		t.Errorf("GenerateSQL() returned error: %v", err)
 	}
 
-	// Empty data should still work
-	_ = result
+	// Empty data should return empty string
+	if result != "" {
+		t.Errorf("GenerateSQL() with empty data should return empty string, got %q", result)
+	}
 }
 
 func TestAppFindAndReplace(t *testing.T) {
@@ -193,5 +201,28 @@ func TestExportToFileLogic(t *testing.T) {
 
 	if string(data) != content {
 		t.Errorf("File content = %q, want %q", string(data), content)
+	}
+}
+
+func TestSQLOptionsStruct(t *testing.T) {
+	opts := SQLOptions{
+		TableName:       "orders",
+		SelectedColumns: []string{"id", "total"},
+		NumberColumns:   []string{"id", "total"},
+		BatchSize:       500,
+		ValuesOnly:      false,
+	}
+
+	if opts.TableName != "orders" {
+		t.Errorf("TableName = %q, want 'orders'", opts.TableName)
+	}
+	if len(opts.SelectedColumns) != 2 {
+		t.Errorf("len(SelectedColumns) = %d, want 2", len(opts.SelectedColumns))
+	}
+	if opts.BatchSize != 500 {
+		t.Errorf("BatchSize = %d, want 500", opts.BatchSize)
+	}
+	if opts.ValuesOnly {
+		t.Errorf("ValuesOnly = true, want false")
 	}
 }
