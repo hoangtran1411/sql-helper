@@ -1,74 +1,86 @@
-# Makefile Template for Go Projects
-# Change these variables as needed
-BINARY_NAME=MyApp
-BUILD_DIR=build
-MAIN_FILE=main.go
+.PHONY: dev build test lint coverage coverage-html clean deps install-tools fmt fmt-check check bindings help
 
-.PHONY: all build clean test coverage lint deps help
-
-all: build
-
-# Help command to display available targets
+# Default target
 help:
 	@echo "Available commands:"
-	@echo "  make build    - Build the application"
-	@echo "  make run      - Run the application"
-	@echo "  make test     - Run unit tests"
-	@echo "  make coverage - Generate coverage report"
-	@echo "  make lint     - Run linter"
-	@echo "  make clean    - Clean build artifacts"
-	@echo "  make deps     - Download dependencies"
+	@echo "  make dev          - Run in development mode (wails3 dev)"
+	@echo "  make bindings     - Generate Wails v3 frontend bindings"
+	@echo "  make build        - Build production binary (wails3 build)"
+	@echo "  make test         - Run unit tests"
+	@echo "  make lint         - Run golangci-lint"
+	@echo "  make coverage     - Run tests with coverage report"
+	@echo "  make check        - Run lint and tests"
+	@echo "  make clean        - Remove build artifacts"
+	@echo "  make deps         - Download dependencies"
 
-# Build the application
+# Development mode
+dev:
+	wails3 dev
+
+# Bindings generation
+bindings:
+	wails3 generate bindings
+
+# Build production binary
 build:
-	@echo "Building..."
-	@mkdir -p $(BUILD_DIR)
-	go build -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_FILE)
-
-# Run the application
-run:
-	go run $(MAIN_FILE)
+	wails3 build
 
 # Cross-platform builds
-build-all: build-windows build-linux build-mac
-
 build-windows:
-	@echo "Building for Windows..."
-	GOOS=windows GOARCH=amd64 go build -o $(BUILD_DIR)/$(BINARY_NAME).exe $(MAIN_FILE)
+	wails3 build -platform windows/amd64
 
+# Build for macOS
+build-darwin:
+	wails3 build -platform darwin/universal
+
+# Build for Linux
 build-linux:
-	@echo "Building for Linux..."
-	GOOS=linux GOARCH=amd64 go build -o $(BUILD_DIR)/$(BINARY_NAME)-linux $(MAIN_FILE)
-
-build-mac:
-	@echo "Building for Mac..."
-	GOOS=darwin GOARCH=amd64 go build -o $(BUILD_DIR)/$(BINARY_NAME)-mac $(MAIN_FILE)
+	wails3 build -platform linux/amd64
 
 # Testing
 test:
-	@echo "Running tests..."
-	go test ./... -v
-
-# Code Coverage
-coverage:
-	@echo "Generating coverage report..."
-	go test ./... -coverprofile=$(BUILD_DIR)/coverage.out
-	go tool cover -html=$(BUILD_DIR)/coverage.out -o $(BUILD_DIR)/coverage.html
-	@echo "Coverage report saved to $(BUILD_DIR)/coverage.html"
+	go test -v ./...
 
 # Linting (requires golangci-lint)
 lint:
-	@echo "Linting..."
-	golangci-lint run
+	golangci-lint run ./...
+
+# Code Coverage (space instead of = for Windows PowerShell argument parsing)
+coverage:
+	go test -v -coverprofile coverage.out ./...
+	go tool cover -func=coverage.out
+	@echo ""
+	@echo "To view HTML report, run: go tool cover -html=coverage.out"
+
+# Generate HTML coverage report
+coverage-html: coverage
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
 
 # Clean build artifacts
 clean:
-	@echo "Cleaning..."
-	@rm -rf $(BUILD_DIR)
-	@go clean
+	rm -rf build/
+	rm -f coverage.out coverage.html internal.out
 
 # Dependencies
 deps:
-	@echo "Downloading dependencies..."
-	go mod tidy
 	go mod download
+	go mod tidy
+
+# Install development tools
+install-tools:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+# Format code
+fmt:
+	go fmt ./...
+	goimports -w .
+
+# Check if code is properly formatted
+fmt-check:
+	@test -z "$$(gofmt -l .)" || (echo "Code is not formatted. Run 'make fmt'" && exit 1)
+
+# Run all checks (lint + test)
+check: lint test
+	@echo "All checks passed!"

@@ -1,132 +1,120 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"strings"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// App struct holds the application state
-type App struct {
-	ctx context.Context
-}
+// App struct holds application service state
+type App struct{}
 
-// NewApp creates a new App application struct
+// NewApp creates a new App application service
 func NewApp() *App {
 	return &App{}
 }
 
-// startup is called when the app starts. Save the context for runtime calls.
-func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
-}
-
 // ============ File Dialogs ============
 
-// SelectFile opens a file dialog and returns the selected file path
+// SelectFile opens a file selection dialog
 func (a *App) SelectFile(title string, patterns []string) (string, error) {
-	filters := []runtime.FileFilter{}
+	filters := []application.FileFilter{}
 	if len(patterns) > 0 {
-		filters = append(filters, runtime.FileFilter{
+		filters = append(filters, application.FileFilter{
 			DisplayName: "Allowed Files",
-			Pattern:     patterns[0],
+			Pattern:     strings.Join(patterns, ";"),
 		})
 	}
 
-	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+	dialog := application.Get().Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
 		Title:   title,
 		Filters: filters,
 	})
+
+	filePath, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "cancel") {
+			return "", nil // User cancelled
+		}
+		return "", err
+	}
+	return filePath, nil
 }
 
-// SelectFolder opens a folder dialog and returns the selected folder path
+// SelectFolder opens a directory selection dialog
 func (a *App) SelectFolder(title string) (string, error) {
-	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: title,
+	dialog := application.Get().Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		Title:                title,
+		CanChooseDirectories: true,
+		CanChooseFiles:       false,
 	})
+
+	folderPath, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "cancel") {
+			return "", nil // User cancelled
+		}
+		return "", err
+	}
+	return folderPath, nil
 }
 
-// SaveFile opens a save file dialog and returns the selected path
+// SaveFile opens a save file dialog
 func (a *App) SaveFile(title string, defaultFilename string) (string, error) {
-	return runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           title,
-		DefaultFilename: defaultFilename,
+	dialog := application.Get().Dialog.SaveFileWithOptions(&application.SaveFileDialogOptions{
+		Title:    title,
+		Filename: defaultFilename,
 	})
+
+	savePath, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "cancel") {
+			return "", nil // User cancelled
+		}
+		return "", err
+	}
+	return savePath, nil
 }
 
-// ============ Message Dialogs ============
+// ============ Clipboard & Browser ============
 
-// ShowInfo shows an information dialog
-func (a *App) ShowInfo(title, message string) {
-	runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
-		Type:    runtime.InfoDialog,
-		Title:   title,
-		Message: message,
-	})
+// CopyToClipboard copies text to system clipboard
+func (a *App) CopyToClipboard(text string) error {
+	if !application.Get().Clipboard.SetText(text) {
+		return fmt.Errorf("failed to copy text to clipboard")
+	}
+	return nil
 }
 
-// ShowError shows an error dialog
-func (a *App) ShowError(title, message string) {
-	runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
-		Type:    runtime.ErrorDialog,
-		Title:   title,
-		Message: message,
-	})
+// OpenURL opens an external link in default browser
+func (a *App) OpenURL(url string) error {
+	return application.Get().Browser.OpenURL(url)
 }
 
-// ShowConfirm shows a confirmation dialog and returns the user's choice
-func (a *App) ShowConfirm(title, message string) (bool, error) {
-	result, err := runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
-		Type:          runtime.QuestionDialog,
-		Title:         title,
-		Message:       message,
-		Buttons:       []string{"Yes", "No"},
-		DefaultButton: "Yes",
-	})
-	return result == "Yes", err
-}
-
-// ============ Events ============
+// ============ Events & Lifecycle ============
 
 // EmitProgress emits a progress event to the frontend
 func (a *App) EmitProgress(progress float64) {
-	runtime.EventsEmit(a.ctx, "progress", progress)
+	application.Get().Event.Emit("progress", progress)
 }
 
 // EmitStatus emits a status message to the frontend
 func (a *App) EmitStatus(status string, statusType string) {
-	runtime.EventsEmit(a.ctx, "status", map[string]string{
+	application.Get().Event.Emit("status", map[string]string{
 		"message": status,
 		"type":    statusType,
 	})
 }
 
-// ============ Window Control ============
-
-// MinimizeWindow minimizes the application window
-func (a *App) MinimizeWindow() {
-	runtime.WindowMinimise(a.ctx)
-}
-
-// MaximizeWindow maximizes the application window
-func (a *App) MaximizeWindow() {
-	runtime.WindowMaximise(a.ctx)
-}
-
-// SetWindowTitle sets the window title
-func (a *App) SetWindowTitle(title string) {
-	runtime.WindowSetTitle(a.ctx, title)
-}
-
 // QuitApp closes the application
 func (a *App) QuitApp() {
-	runtime.Quit(a.ctx)
+	application.Get().Quit()
 }
 
 // ============ Business Logic Example ============
 
-// ProcessData is an example method that processes data with progress reporting
+// ProcessData processes items with real-time progress reporting
 func (a *App) ProcessData(items []string) (string, error) {
 	total := len(items)
 	if total == 0 {
@@ -134,8 +122,8 @@ func (a *App) ProcessData(items []string) (string, error) {
 	}
 
 	for i, item := range items {
-		// Simulate processing
-		fmt.Println("Processing:", item)
+		// Simulate work
+		_ = item
 
 		// Report progress
 		progress := float64(i+1) / float64(total) * 100

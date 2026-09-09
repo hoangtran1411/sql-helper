@@ -14,7 +14,6 @@
 package main
 
 import (
-	"context"
 	"strings"
 	"testing"
 )
@@ -146,7 +145,6 @@ func TestGitHubReleaseStruct(t *testing.T) {
 }
 
 func TestGitHubConstants(t *testing.T) {
-	// Skip if constants are still template placeholders
 	if strings.HasPrefix(GitHubOwner, "{{") {
 		t.Skip("GitHubOwner is still a template placeholder - update before testing")
 	}
@@ -163,7 +161,6 @@ func TestGitHubConstants(t *testing.T) {
 }
 
 func TestCurrentVersionDefault(t *testing.T) {
-	// CurrentVersion should have a default value
 	if CurrentVersion == "" {
 		t.Error("CurrentVersion should not be empty")
 	}
@@ -171,7 +168,6 @@ func TestCurrentVersionDefault(t *testing.T) {
 
 func TestGetCurrentVersion(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
 
 	version := app.GetCurrentVersion()
 	if version != CurrentVersion {

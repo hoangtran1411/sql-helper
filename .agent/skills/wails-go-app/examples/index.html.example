@@ -5,15 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Wails App</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Optional: Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="app-container">
         <!-- Header -->
         <header class="header">
             <div class="logo">
-                <h1 class="gradient-text">My App</h1>
+                <h1 class="gradient-text">My Wails App</h1>
             </div>
             <span class="version">v1.0</span>
         </header>
@@ -23,14 +21,14 @@
             <!-- Example Card -->
             <section class="card">
                 <div class="card-header">
-                    <h2>Example Section</h2>
+                    <h2>File Selection</h2>
                 </div>
                 <div class="card-body">
                     <div class="input-group">
-                        <label>File Path</label>
+                        <label for="filePath">File Path</label>
                         <div class="file-input">
                             <input type="text" id="filePath" placeholder="Select a file..." readonly>
-                            <button class="btn btn-secondary" onclick="selectFile()">Browse</button>
+                            <button class="btn btn-secondary" id="btnSelectFile">Browse</button>
                         </div>
                     </div>
                 </div>
@@ -44,7 +42,7 @@
                     </div>
                     <span class="progress-text" id="progressText">0%</span>
                 </div>
-                <button class="btn btn-primary" id="processBtn" onclick="startProcess()">
+                <button class="btn btn-primary" id="processBtn">
                     Start Processing
                 </button>
             </section>
@@ -55,11 +53,11 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <span>Built with Go + Wails</span>
+            <span>Built with Go + Wails v3</span>
         </footer>
     </div>
 
-    <script src="wails.js"></script>
-    <script src="app.js"></script>
+    <!-- Wails v3 uses standard ES modules -->
+    <script type="module" src="app.js"></script>
 </body>
 </html>

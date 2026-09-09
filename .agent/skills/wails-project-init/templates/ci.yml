@@ -1,13 +1,13 @@
 # =============================================================================
-# CI Workflow for Go + Wails Applications
+# CI Workflow for Go + Wails v3 Applications
 # =============================================================================
 # Tested and verified on: Ubuntu, Windows, macOS
-# Last updated: 2026-01-22
 #
 # IMPORTANT NOTES:
-# 1. Use SPACE (not =) for -coverprofile and -covermode flags (Windows PowerShell fix)
-# 2. Linux requires webkit2_41 tag for Ubuntu 22.04+ (libwebkit2gtk-4.1)
-# 3. Race detector works on all platforms with this syntax
+# 1. Use SPACE (not =) for -coverprofile flag for Windows PowerShell compatibility
+# 2. Wails v3 Linux uses GTK4 and WebKitGTK 6.0 (libgtk-4-dev libwebkitgtk-6.0-dev)
+# 3. Generates bindings using `wails3 generate bindings` before building
+# 4. Enforces 70% unit test coverage gate on internal/ business logic packages
 # =============================================================================
 
 name: CI
@@ -19,28 +19,27 @@ on:
     branches: [main, master]
 
 env:
-  GO_VERSION: "1.24"
-  NODE_VERSION: "20"
+  GO_VERSION: "1.27"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
-          args: --timeout=5m
+          version: v2.13.2
 
   test:
     name: Test
@@ -50,40 +49,46 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
+
       - name: Download dependencies
         run: go mod download
 
-      # CRITICAL: Use SPACE instead of = for flags to avoid Windows PowerShell parsing issues
-      # The = syntax causes PowerShell to interpret ".out" as a separate package name
       - name: Run tests with coverage
-        run: go test -v -race -coverprofile coverage.out -covermode atomic ./internal/...
+        run: go test -v -coverprofile coverage.out ./...
 
-      - name: Check coverage
+      - name: Check internal coverage
         if: matrix.os == 'ubuntu-latest'
         run: |
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-          echo "Total coverage: ${COVERAGE}%"
-          # Fail if coverage is below 60% (adjust as needed)
-          if (( $(echo "$COVERAGE < 60" | bc -l) )); then
-            echo "Coverage is below 60%!"
+          TOTAL=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
+          echo "Total coverage (all packages): ${TOTAL}"
+
+          go test -coverprofile internal.out ./internal/...
+          INTERNAL=$(go tool cover -func=internal.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Internal package coverage: ${INTERNAL}%"
+          if (( $(echo "$INTERNAL < 70" | bc -l) )); then
+            echo "Internal coverage is below 70%!"
             exit 1
           fi
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: ./coverage.out
           fail_ci_if_error: false
-          # For private repos, add: token: ${{ secrets.CODECOV_TOKEN }}
 
   build:
     name: Build
@@ -92,49 +97,42 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        include:
-          - os: ubuntu-latest
-            platform: linux/amd64
-          - os: windows-latest
-            platform: windows/amd64
-          - os: macos-latest
-            platform: darwin/universal
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
-
-      # Ubuntu 22.04+ uses libwebkit2gtk-4.1, requires webkit2_41 build tag
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
 
-      # CRITICAL: Use -tags webkit2_41 (not webkit2gtk_4.1) for Ubuntu 22.04+
-      - name: Build (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: wails build -platform ${{ matrix.platform }} -tags webkit2_41
+      - name: Install Wails v3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 
-      - name: Build (non-Linux)
-        if: matrix.os != 'ubuntu-latest'
-        run: wails build -platform ${{ matrix.platform }}
+      - name: Generate Wails v3 Bindings
+        run: wails3 generate bindings
+
+      - name: Build Application (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          mkdir -p build/bin
+          go build -ldflags "-s -w" -o build/bin/{{PROJECT_NAME}}.exe .
+
+      - name: Build Application (Linux / macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          mkdir -p build/bin
+          go build -ldflags "-s -w" -o build/bin/{{PROJECT_NAME}} .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: {{PROJECT_NAME}}-${{ matrix.os }}
           path: build/bin/

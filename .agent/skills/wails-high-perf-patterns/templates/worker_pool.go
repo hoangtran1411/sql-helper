@@ -4,23 +4,24 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // Job represents the unit of work
 type Job struct {
 	ID   int
 	Path string
-	// Add other fields needed for processing
 }
 
-// Result represents the outcome
+// Result represents the outcome of processing a job
 type Result struct {
 	JobID int
 	Data  interface{}
 	Err   error
 }
 
-// Processor manages the pool
+// Processor manages the concurrent worker pool
 type Processor struct {
 	WorkerCount int
 	Jobs        chan Job
@@ -28,12 +29,12 @@ type Processor struct {
 	Done        chan bool
 }
 
-// NewProcessor creates a pool
+// NewProcessor creates a pool with specified concurrency
 func NewProcessor(workers int) *Processor {
 	return &Processor{
 		WorkerCount: workers,
-		Jobs:        make(chan Job, 100),    // Buffer job queue
-		Results:     make(chan Result, 100), // Buffer result queue
+		Jobs:        make(chan Job, 100),    // Buffered job queue
+		Results:     make(chan Result, 100), // Buffered result queue
 		Done:        make(chan bool),
 	}
 }
@@ -45,15 +46,13 @@ func (p *Processor) Start(ctx context.Context) {
 	// 1. Spawn Workers
 	for i := 0; i < p.WorkerCount; i++ {
 		wg.Add(1)
-		go func(id int) {
+		go func(workerID int) {
 			defer wg.Done()
 			for job := range p.Jobs {
-				// Check context cancellation
 				select {
 				case <-ctx.Done():
 					return
 				default:
-					// Do Heavy Work
 					res := process(job)
 					p.Results <- res
 				}
@@ -72,17 +71,16 @@ func (p *Processor) Start(ctx context.Context) {
 // Heavy processing logic
 func process(j Job) Result {
 	// Simulate work
-	// img, err := imaging.Open(j.Path) ...
 	return Result{JobID: j.ID, Err: nil}
 }
 
-// Example usage in Wails App
+// Example usage in Wails v3 Application
 func RunExample(items []string) {
 	p := NewProcessor(10)
 	ctx := context.Background()
 	p.Start(ctx)
 
-	// Sender
+	// Producer
 	go func() {
 		for i, item := range items {
 			p.Jobs <- Job{ID: i, Path: item}
@@ -90,12 +88,20 @@ func RunExample(items []string) {
 		close(p.Jobs)
 	}()
 
-	// Receiver (Update UI here)
+	// Collector (Update UI via Wails v3 event emitter)
+	total := len(items)
+	completed := 0
+
 	for res := range p.Results {
+		completed++
 		if res.Err != nil {
-			fmt.Println("Error:", res.Err)
-		} else {
-			// runtime.EventsEmit(ctx, "progress", ...)
+			fmt.Printf("Job %d failed: %v\n", res.JobID, res.Err)
+		}
+
+		// Emit real-time progress to frontend
+		if app := application.Get(); app != nil {
+			progressPercent := float64(completed) / float64(total) * 100
+			app.Event.Emit("progress", progressPercent)
 		}
 	}
 }

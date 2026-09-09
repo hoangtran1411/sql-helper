@@ -280,45 +280,57 @@ go mod tidy
 ## Reference Links
 
 ### Official Go Documentation
-- Reference: https://go.dev/doc
+
+- Reference: <https://go.dev/doc>
 - Primary source for Go syntax, tooling, modules.
 
 ### Effective Go
-- Reference: https://go.dev/doc/effective_go
+
+- Reference: <https://go.dev/doc/effective_go>
 - Idiomatic Go practices. All `internal/` packages must comply.
 
 ### Go Modules
-- Reference: https://go.dev/ref/mod
+
+- Reference: <https://go.dev/ref/mod>
 - Dependency management. Avoid unnecessary `replace` directives.
 
 ### Go Testing
-- Reference: https://go.dev/doc/testing
+
+- Reference: <https://go.dev/doc/testing>
 - Standard patterns for unit tests, benchmarks, coverage.
 
 ### Go Context
-- Reference: https://pkg.go.dev/context
+
+- Reference: <https://pkg.go.dev/context>
 - Mandatory for cancellation and timeouts in I/O operations.
 
 ### Go Error Handling
-- Reference: https://go.dev/blog/error-handling-and-go
+
+- Reference: <https://go.dev/blog/error-handling-and-go>
 - Errors are values. Wrap errors; avoid panic in business logic.
 
 ### Go Concurrency
-- Reference: https://go.dev/doc/effective_go#concurrency
+
+- Reference: <https://go.dev/doc/effective_go#concurrency>
 - Use goroutines and channels deliberately.
 
 ### Go Standard Library
-- Reference: https://pkg.go.dev/std
+
+- Reference: <https://pkg.go.dev/std>
 - Prefer stdlib before third-party dependencies.
 
 ### Wails Desktop App
-- Reference: https://github.com/wailsapp/wails
-- Follow Wails v2 patterns for Go-to-frontend binding.
+
+- Reference: <https://v3.wails.io>
+- GitHub: <https://github.com/wailsapp/wails>
+- Follow Wails v3 service patterns (`application.NewService`, `application.Get().*`) for Go-to-frontend communication.
 
 ### Excelize
-- Reference: https://github.com/xuri/excelize
+
+- Reference: <https://github.com/xuri/excelize>
 - Use Excelize v2 for all Excel operations.
 
 ### Linting
-- Reference: https://github.com/golangci/golangci-lint
+
+- Reference: <https://github.com/golangci/golangci-lint>
 - Run before committing. Fix all issues to pass CI.

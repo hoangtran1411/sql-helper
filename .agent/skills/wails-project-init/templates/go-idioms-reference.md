@@ -301,8 +301,9 @@ go mod tidy
 - Prefer stdlib before third-party dependencies.
 
 ### Wails Desktop App
-- Reference: https://github.com/wailsapp/wails
-- Follow Wails v2 patterns for Go-to-frontend binding.
+- Reference: https://v3.wails.io
+- GitHub: https://github.com/wailsapp/wails
+- Follow Wails v3 service patterns (`application.NewService`, `application.Get().*`) for Go-to-frontend communication.
 
 ### Linting
 - Reference: https://github.com/golangci/golangci-lint

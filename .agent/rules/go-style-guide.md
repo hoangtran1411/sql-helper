@@ -7,8 +7,10 @@ trigger: always_on
 > **Core Rules** - For full idioms reference, see `go-idioms-reference.md`
 
 This project is an **Excel to SQL INSERT statement converter** built with:
-- **Wails v2** for the Desktop GUI (Windows)
-- **Excelize v2** for Excel file parsing
+
+- **Wails v3** (`v3.0.0-beta.15`) for the Desktop GUI (Windows)
+- **Go 1.27**
+- **Excelize v2** for Excel file parsing & streaming
 - **Internal packages** for modular business logic
 
 ---
@@ -17,19 +19,20 @@ This project is an **Excel to SQL INSERT statement converter** built with:
 
 - Format with `gofmt`/`goimports`. Run `golangci-lint run ./...` before commit.
 - Adhere to [Effective Go](https://go.dev/doc/effective_go).
-- Core logic in `internal/` packages. Wails code in root package.
+- Core logic in `internal/` packages. Wails service bindings in root package.
 
 ## Project Structure
 
 ```
 sql-helper/
-  main.go              - Wails entry point
-  app.go               - Wails app bindings
-  updater.go           - Auto-update from GitHub Releases
+  main.go              - Wails v3 entry point (application.New, WebviewWindowOptions)
+  app.go               - Backend application service bound to frontend
+  updater.go           - Auto-update from GitHub Releases (application.Get())
   internal/
-    excel/             - Excel parsing (Excelize)
-    sql/               - SQL generation
-  frontend/            - Wails frontend (HTML/CSS/JS)
+    excel/             - Excel parsing & O(1) streaming (parser.go)
+    sql/               - SQL generation & formatting (generator.go, formatter.go)
+  frontend/            - Vanilla HTML/CSS/JS frontend
+    bindings/          - Wails v3 generated ES module bindings
   build/               - Build output
 ```
 
@@ -40,18 +43,33 @@ sql-helper/
 - Do not log and return the same error
 - One responsibility per layer
 
-## Wails Integration
+## Wails v3 Integration
 
-- Bound methods on `*App` struct (PascalCase)
-- `runtime.EventsEmit()` for frontend updates
-- Return structs with `json` tags
-- Use `runtime.*Dialog()` for file selection
+- Service registration: `application.NewService(appService)` in `main.go`
+- Public methods on `*App` struct (PascalCase) exposed to frontend bindings
+- Runtime API access via `application.Get()`:
+  - Events: `application.Get().Event.Emit("eventName", data)`
+  - Dialogs: `application.Get().Dialog.OpenFileWithOptions()` & `SaveFileWithOptions()`
+  - Clipboard: `application.Get().Clipboard.SetText(text)`
+  - Browser: `application.Get().Browser.OpenURL(url)`
+  - Quit: `application.Get().Quit()`
+- Frontend bindings: Generated via `wails3 generate bindings`, imported as ES modules:
+  - `import * as App from "./bindings/github.com/hoangtran1411/sql-helper/app.js"`
+  - `import { Events } from "@wailsio/runtime"`
+- Return structs with `json` tags for JSON serialization
+
+## Streaming & Performance Architecture
+
+- O(1) Memory Streaming: Use `excel.IterateSheet()` row iterator with `bufio.Writer` for direct file export without loading entire dataset into RAM
+- UI Preview: Limit preview data to 100 rows (`excel.GetPreview()`) to keep frontend DOM lightweight and responsive
+- Batching: Support customizable SQL batch sizes (e.g. 1000 rows per `INSERT INTO`) to optimize database ingestion
 
 ## Testing & Linting
 
 - Table-driven tests with `t.Run`
-- Target 70% coverage for `internal/`
-- Use `make test` and `make lint`
+- Target 70% coverage gate specifically on `internal/` packages (`./internal/...`)
+- Windows PowerShell compatibility: Always separate `-coverprofile` with space, not `=`, e.g. `go test -coverprofile coverage.out ./...`
+- Commands: `make test`, `make lint`, `make check`, `make coverage`
 
 ---
 
@@ -71,9 +89,9 @@ sql-helper/
 
 ### Library Version Awareness
 
-- Check `go.mod` for actual versions before suggesting APIs
+- Check `go.mod` for actual versions before suggesting APIs (Wails v3, Excelize v2, Go 1.27)
 - LLMs hallucinate APIs for newer features not in training data
-- Prefer stable APIs over experimental features
+- Note Wails v3 API differences from v2: `application.Get()` replaces context-based `runtime.*` calls
 
 ### Context Engineering
 
@@ -86,8 +104,9 @@ sql-helper/
 ## Quick Reference Links
 
 - [Effective Go](https://go.dev/doc/effective_go)
-- [Wails v2](https://github.com/wailsapp/wails)
+- [Wails v3 Docs](https://v3.wails.io)
+- [Wails GitHub](https://github.com/wailsapp/wails)
 - [Excelize](https://github.com/xuri/excelize)
 - [golangci-lint](https://github.com/golangci/golangci-lint)
 
-> **Full Reference:** See `.agent/rules/go-idioms-reference.md` for detailed idioms, code examples, and best practices.
+> **Full Reference:** See `go-idioms-reference.md` for detailed idioms, code examples, and best practices.
