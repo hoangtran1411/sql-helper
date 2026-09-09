@@ -8,7 +8,7 @@ import (
 func TestFormatCellValue(t *testing.T) {
 	tests := []struct {
 		name      string
-		value     interface{}
+		value     any
 		isNumeric bool
 		expected  string
 	}{
@@ -61,7 +61,7 @@ func TestFormatCellValue(t *testing.T) {
 func TestFormatNumericValue(t *testing.T) {
 	tests := []struct {
 		name     string
-		value    interface{}
+		value    any
 		expected string
 	}{
 		{"int", 42, "42"},
@@ -99,7 +99,7 @@ func TestFormatNumericValue(t *testing.T) {
 func TestFormatTextValue(t *testing.T) {
 	tests := []struct {
 		name     string
-		value    interface{}
+		value    any
 		expected string
 	}{
 		{"simple string", "Hello World", "'Hello World'"},

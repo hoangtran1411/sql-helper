@@ -2,6 +2,7 @@ package excel
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/xuri/excelize/v2"
@@ -11,7 +12,7 @@ func TestSheetDataStructure(t *testing.T) {
 	// Test SheetData struct initialization
 	data := &SheetData{
 		Headers:  []string{"Name", "Age", "Email"},
-		DataRows: [][]interface{}{{"John", 30, "john@example.com"}},
+		DataRows: [][]any{{"John", 30, "john@example.com"}},
 	}
 
 	if len(data.Headers) != 3 {
@@ -30,7 +31,7 @@ func TestSheetDataStructure(t *testing.T) {
 func TestSheetDataEmpty(t *testing.T) {
 	data := &SheetData{
 		Headers:  []string{},
-		DataRows: [][]interface{}{},
+		DataRows: [][]any{},
 	}
 
 	if len(data.Headers) != 0 {
@@ -45,7 +46,7 @@ func TestSheetDataEmpty(t *testing.T) {
 func TestSheetDataWithNilValues(t *testing.T) {
 	data := &SheetData{
 		Headers: []string{"A", "B", "C"},
-		DataRows: [][]interface{}{
+		DataRows: [][]any{
 			{nil, "value", nil},
 			{"x", nil, "z"},
 		},
@@ -68,7 +69,7 @@ func TestSheetDataWithNilValues(t *testing.T) {
 func TestSheetDataMultipleTypes(t *testing.T) {
 	data := &SheetData{
 		Headers: []string{"String", "Int", "Float", "Bool"},
-		DataRows: [][]interface{}{
+		DataRows: [][]any{
 			{"text", 42, 3.14, true},
 			{"more", 100, 2.5, false},
 		},
@@ -155,14 +156,7 @@ func TestParseExcelFile_ValidFile(t *testing.T) {
 	}
 
 	// Default sheet name should be "Sheet1"
-	found := false
-	for _, s := range sheets {
-		if s == "Sheet1" {
-			found = true
-			break
-		}
-	}
-	if !found {
+	if !slices.Contains(sheets, "Sheet1") {
 		t.Errorf("Expected 'Sheet1' in sheets, got %v", sheets)
 	}
 }

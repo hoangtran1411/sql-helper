@@ -9,35 +9,35 @@ func TestGenerateSQLValues(t *testing.T) {
 	tests := []struct {
 		name          string
 		headers       []string
-		dataRows      [][]interface{}
+		dataRows      [][]any
 		numberColumns []string
 		expected      string
 	}{
 		{
 			name:          "empty rows",
 			headers:       []string{"Name", "Age"},
-			dataRows:      [][]interface{}{},
+			dataRows:      [][]any{},
 			numberColumns: []string{},
 			expected:      "",
 		},
 		{
 			name:          "single row no numeric",
 			headers:       []string{"Name", "Email"},
-			dataRows:      [][]interface{}{{"John", "john@example.com"}},
+			dataRows:      [][]any{{"John", "john@example.com"}},
 			numberColumns: []string{},
 			expected:      "('John', 'john@example.com')",
 		},
 		{
 			name:          "single row with numeric",
 			headers:       []string{"Name", "Age"},
-			dataRows:      [][]interface{}{{"John", 30}},
+			dataRows:      [][]any{{"John", 30}},
 			numberColumns: []string{"Age"},
 			expected:      "('John', 30)",
 		},
 		{
 			name:    "multiple rows",
 			headers: []string{"Name", "Age", "Active"},
-			dataRows: [][]interface{}{
+			dataRows: [][]any{
 				{"John", 30, "TRUE"},
 				{"Jane", 25, "FALSE"},
 			},
@@ -47,7 +47,7 @@ func TestGenerateSQLValues(t *testing.T) {
 		{
 			name:    "null values",
 			headers: []string{"Name", "Age", "Email"},
-			dataRows: [][]interface{}{
+			dataRows: [][]any{
 				{"John", nil, nil},
 			},
 			numberColumns: []string{"Age"},
@@ -56,7 +56,7 @@ func TestGenerateSQLValues(t *testing.T) {
 		{
 			name:    "mixed types",
 			headers: []string{"ID", "Name", "Score", "Date"},
-			dataRows: [][]interface{}{
+			dataRows: [][]any{
 				{1, "Alice", 95.5, "2024-01-15"},
 				{2, "Bob", nil, "2024-02-20"},
 			},
@@ -66,14 +66,14 @@ func TestGenerateSQLValues(t *testing.T) {
 		{
 			name:          "row shorter than headers",
 			headers:       []string{"A", "B", "C"},
-			dataRows:      [][]interface{}{{"X", "Y"}},
+			dataRows:      [][]any{{"X", "Y"}},
 			numberColumns: []string{},
 			expected:      "('X', 'Y', '')",
 		},
 		{
 			name:          "quote escaping",
 			headers:       []string{"Description"},
-			dataRows:      [][]interface{}{{"It's O'Brien's book"}},
+			dataRows:      [][]any{{"It's O'Brien's book"}},
 			numberColumns: []string{},
 			expected:      "('It''s O''Brien''s book')",
 		},
@@ -92,9 +92,9 @@ func TestGenerateSQLValues(t *testing.T) {
 func TestGenerateSQLValues_LargeDataset(t *testing.T) {
 	// Test with larger dataset to verify performance
 	headers := []string{"ID", "Name", "Value"}
-	dataRows := make([][]interface{}, 100)
+	dataRows := make([][]any, 100)
 	for i := 0; i < 100; i++ {
-		dataRows[i] = []interface{}{i, "Name" + string(rune('A'+i%26)), float64(i) * 1.5}
+		dataRows[i] = []any{i, "Name" + string(rune('A'+i%26)), float64(i) * 1.5}
 	}
 
 	result := GenerateSQLValues(headers, dataRows, []string{"ID", "Value"})
@@ -113,74 +113,74 @@ func TestGenerateSQLValues_LargeDataset(t *testing.T) {
 func TestFindAndReplace(t *testing.T) {
 	tests := []struct {
 		name        string
-		dataRows    [][]interface{}
+		dataRows    [][]any
 		findValue   string
 		replaceWith string
-		expected    [][]interface{}
+		expected    [][]any
 	}{
 		{
 			name: "simple replace",
-			dataRows: [][]interface{}{
+			dataRows: [][]any{
 				{"Hello", "World"},
 				{"Hello", "There"},
 			},
 			findValue:   "Hello",
 			replaceWith: "Hi",
-			expected: [][]interface{}{
+			expected: [][]any{
 				{"Hi", "World"},
 				{"Hi", "There"},
 			},
 		},
 		{
 			name: "no match",
-			dataRows: [][]interface{}{
+			dataRows: [][]any{
 				{"A", "B"},
 			},
 			findValue:   "X",
 			replaceWith: "Y",
-			expected: [][]interface{}{
+			expected: [][]any{
 				{"A", "B"},
 			},
 		},
 		{
 			name: "replace with empty",
-			dataRows: [][]interface{}{
+			dataRows: [][]any{
 				{"Remove", "Keep"},
 			},
 			findValue:   "Remove",
 			replaceWith: "",
-			expected: [][]interface{}{
+			expected: [][]any{
 				{"", "Keep"},
 			},
 		},
 		{
 			name: "replace number as string",
-			dataRows: [][]interface{}{
+			dataRows: [][]any{
 				{123, "text"},
 			},
 			findValue:   "123",
 			replaceWith: "456",
-			expected: [][]interface{}{
+			expected: [][]any{
 				{"456", "text"},
 			},
 		},
 		{
 			name: "nil handling",
-			dataRows: [][]interface{}{
+			dataRows: [][]any{
 				{nil, "value"},
 			},
 			findValue:   "<nil>",
 			replaceWith: "NULL",
-			expected: [][]interface{}{
+			expected: [][]any{
 				{"NULL", "value"},
 			},
 		},
 		{
 			name:        "empty rows",
-			dataRows:    [][]interface{}{},
+			dataRows:    [][]any{},
 			findValue:   "X",
 			replaceWith: "Y",
-			expected:    [][]interface{}{},
+			expected:    [][]any{},
 		},
 	}
 
@@ -260,7 +260,7 @@ func TestBuildInsertPrefix(t *testing.T) {
 
 func TestGenerateBatchSQL(t *testing.T) {
 	headers := []string{"id", "name", "age", "status"}
-	dataRows := [][]interface{}{
+	dataRows := [][]any{
 		{1, "Alice", 25, "active"},
 		{2, "Bob", 30, "pending"},
 		{3, "Charlie", 35, "active"},

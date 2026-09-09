@@ -8,7 +8,7 @@ import (
 )
 
 // FormatCellValue formats a cell value for SQL
-func FormatCellValue(value interface{}, isNumeric bool) string {
+func FormatCellValue(value any, isNumeric bool) string {
 	// Handle nil
 	if value == nil {
 		if isNumeric {
@@ -27,7 +27,7 @@ func FormatCellValue(value interface{}, isNumeric bool) string {
 }
 
 // FormatNumericValue formats a value for a numeric column
-func FormatNumericValue(value interface{}) string {
+func FormatNumericValue(value any) string {
 	switch v := value.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", v)
@@ -55,7 +55,7 @@ func FormatNumericValue(value interface{}) string {
 }
 
 // FormatTextValue formats a value for a text column
-func FormatTextValue(value interface{}) string {
+func FormatTextValue(value any) string {
 	switch v := value.(type) {
 	case time.Time:
 		return fmt.Sprintf("'%s'", v.Format("2006-01-02 15:04:05"))

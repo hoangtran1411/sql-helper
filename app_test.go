@@ -33,7 +33,7 @@ func TestExcelResultStruct(t *testing.T) {
 func TestSheetDataStruct(t *testing.T) {
 	data := excel.SheetData{
 		Headers:  []string{"Name", "Age"},
-		DataRows: [][]interface{}{{"John", 30}, {"Jane", 25}},
+		DataRows: [][]any{{"John", 30}, {"Jane", 25}},
 	}
 
 	if len(data.Headers) != 2 {
@@ -61,7 +61,7 @@ func TestAppGenerateSQL(t *testing.T) {
 	app := NewApp()
 
 	headers := []string{"id", "name", "age"}
-	dataRows := [][]interface{}{
+	dataRows := [][]any{
 		{1, "John", 30},
 		{2, "Jane", 25},
 	}
@@ -90,7 +90,7 @@ func TestAppGenerateSQLEmptyData(t *testing.T) {
 	app := NewApp()
 
 	headers := []string{}
-	dataRows := [][]interface{}{}
+	dataRows := [][]any{}
 	opts := SQLOptions{}
 
 	result, err := app.GenerateSQL(headers, dataRows, opts)
@@ -107,7 +107,7 @@ func TestAppGenerateSQLEmptyData(t *testing.T) {
 func TestAppFindAndReplace(t *testing.T) {
 	app := NewApp()
 
-	dataRows := [][]interface{}{
+	dataRows := [][]any{
 		{"Hello", "World"},
 		{"Hello", "Go"},
 	}
@@ -125,7 +125,7 @@ func TestAppFindAndReplace(t *testing.T) {
 func TestAppFindAndReplaceNoMatch(t *testing.T) {
 	app := NewApp()
 
-	dataRows := [][]interface{}{
+	dataRows := [][]any{
 		{"Hello", "World"},
 	}
 
@@ -153,7 +153,7 @@ func TestAppFindAndReplaceNil(t *testing.T) {
 func TestAppFindAndReplaceEmptyStrings(t *testing.T) {
 	app := NewApp()
 
-	dataRows := [][]interface{}{
+	dataRows := [][]any{
 		{"", "Value"},
 	}
 

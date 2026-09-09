@@ -76,7 +76,7 @@ type SQLOptions struct {
 }
 
 // GenerateSQL generates SQL INSERT statements (or raw values) from the data
-func (a *App) GenerateSQL(headers []string, dataRows [][]interface{}, options SQLOptions) (string, error) {
+func (a *App) GenerateSQL(headers []string, dataRows [][]any, options SQLOptions) (string, error) {
 	result := sql.GenerateBatchSQL(headers, dataRows, sql.GenerateOptions{
 		TableName:       options.TableName,
 		SelectedColumns: options.SelectedColumns,
@@ -88,7 +88,7 @@ func (a *App) GenerateSQL(headers []string, dataRows [][]interface{}, options SQ
 }
 
 // FindAndReplace replaces values in the data rows
-func (a *App) FindAndReplace(dataRows [][]interface{}, findValue, replaceWith string) [][]interface{} {
+func (a *App) FindAndReplace(dataRows [][]any, findValue, replaceWith string) [][]any {
 	return sql.FindAndReplace(dataRows, findValue, replaceWith)
 }
 
@@ -177,10 +177,7 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, o
 	}
 
 	insertPrefix := sql.BuildInsertPrefix(options.TableName, validSelectedCols)
-	batchSize := options.BatchSize
-	if batchSize < 0 {
-		batchSize = 0
-	}
+	batchSize := max(0, options.BatchSize)
 
 	inBatchCount := 0
 	totalRows := 0
@@ -197,8 +194,8 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, o
 		}
 
 		// Convert string row to interface row for the formatter
-		interfaceRow := make([]interface{}, len(headers))
-		for i := 0; i < len(headers); i++ {
+		interfaceRow := make([]any, len(headers))
+		for i := range headers {
 			if i < len(row) && row[i] != "" {
 				interfaceRow[i] = row[i]
 			} else {

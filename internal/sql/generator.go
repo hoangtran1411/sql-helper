@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 )
@@ -31,10 +32,7 @@ func FormatIdentifier(name string) string {
 
 // BuildInsertPrefix builds the "INSERT INTO table (col1, col2) VALUES\n" prefix.
 func BuildInsertPrefix(tableName string, columns []string) string {
-	tableName = strings.TrimSpace(tableName)
-	if tableName == "" {
-		tableName = "my_table"
-	}
+	tableName = cmp.Or(strings.TrimSpace(tableName), "my_table")
 
 	var b strings.Builder
 	b.WriteString("INSERT INTO ")
@@ -51,7 +49,7 @@ func BuildInsertPrefix(tableName string, columns []string) string {
 }
 
 // GenerateBatchSQL generates SQL INSERT statements (or raw VALUES) according to opts.
-func GenerateBatchSQL(headers []string, dataRows [][]interface{}, opts GenerateOptions) string {
+func GenerateBatchSQL(headers []string, dataRows [][]any, opts GenerateOptions) string {
 	if len(dataRows) == 0 {
 		return ""
 	}
@@ -109,10 +107,7 @@ func GenerateBatchSQL(headers []string, dataRows [][]interface{}, opts GenerateO
 
 	// Batch INSERT mode
 	prefix := BuildInsertPrefix(opts.TableName, validSelectedCols)
-	batchSize := opts.BatchSize
-	if batchSize < 0 {
-		batchSize = 0
-	}
+	batchSize := max(0, opts.BatchSize)
 
 	inBatchCount := 0
 	for rowIdx, row := range dataRows {
@@ -142,7 +137,7 @@ func GenerateBatchSQL(headers []string, dataRows [][]interface{}, opts GenerateO
 }
 
 // GenerateSQLValues generates SQL INSERT values from the data (legacy wrapper)
-func GenerateSQLValues(headers []string, dataRows [][]interface{}, numberColumns []string) string {
+func GenerateSQLValues(headers []string, dataRows [][]any, numberColumns []string) string {
 	return GenerateBatchSQL(headers, dataRows, GenerateOptions{
 		SelectedColumns: headers,
 		NumberColumns:   numberColumns,
@@ -151,7 +146,7 @@ func GenerateSQLValues(headers []string, dataRows [][]interface{}, numberColumns
 }
 
 // FormatRowSQL formats a single row into SQL values format (val1, val2, ...) using all headers
-func FormatRowSQL(row []interface{}, headers []string, numColSet map[string]bool) string {
+func FormatRowSQL(row []any, headers []string, numColSet map[string]bool) string {
 	indices := make([]int, len(headers))
 	for i := range headers {
 		indices[i] = i
@@ -160,7 +155,7 @@ func FormatRowSQL(row []interface{}, headers []string, numColSet map[string]bool
 }
 
 // FormatRowSQLSelected formats selected columns of a row into SQL values format (val1, val2, ...)
-func FormatRowSQLSelected(row []interface{}, colIndices []int, headers []string, numColSet map[string]bool) string {
+func FormatRowSQLSelected(row []any, colIndices []int, headers []string, numColSet map[string]bool) string {
 	var builder strings.Builder
 	builder.WriteByte('(')
 
@@ -169,7 +164,7 @@ func FormatRowSQLSelected(row []interface{}, colIndices []int, headers []string,
 			builder.WriteString(", ")
 		}
 
-		var cellValue interface{}
+		var cellValue any
 		if colIdx >= 0 && colIdx < len(row) {
 			cellValue = row[colIdx]
 		}
@@ -188,9 +183,9 @@ func FormatRowSQLSelected(row []interface{}, colIndices []int, headers []string,
 }
 
 // FindAndReplace replaces values in the data rows
-func FindAndReplace(dataRows [][]interface{}, findValue, replaceWith string) [][]interface{} {
+func FindAndReplace(dataRows [][]any, findValue, replaceWith string) [][]any {
 	if dataRows == nil {
-		return make([][]interface{}, 0)
+		return make([][]any, 0)
 	}
 
 	for _, row := range dataRows {

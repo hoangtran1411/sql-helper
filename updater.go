@@ -119,7 +119,7 @@ func CompareVersions(v1, v2 string) bool {
 func parseVersion(v string) [3]int {
 	var result [3]int
 	parts := strings.Split(v, ".")
-	for i := 0; i < len(parts) && i < 3; i++ {
+	for i := range min(len(parts), 3) {
 		//nolint:errcheck // default to 0 on parse failure
 		fmt.Sscanf(parts[i], "%d", &result[i])
 	}

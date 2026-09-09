@@ -6,8 +6,8 @@ import (
 
 // SheetData represents data from a processed sheet
 type SheetData struct {
-	Headers  []string        `json:"headers"`
-	DataRows [][]interface{} `json:"dataRows"`
+	Headers  []string `json:"headers"`
+	DataRows [][]any  `json:"dataRows"`
 }
 
 // ParseExcelFile opens an Excel file and returns the list of sheet names
@@ -37,7 +37,7 @@ func GetPreview(filePath, sheetName string, limit int) (*SheetData, error) {
 	defer rows.Close()
 
 	var headers []string
-	var dataRows [][]interface{}
+	var dataRows [][]any
 
 	isFirstRow := true
 	rowCount := 0
@@ -60,8 +60,8 @@ func GetPreview(filePath, sheetName string, limit int) (*SheetData, error) {
 		}
 
 		// Create interface slice for the row
-		interfaceRow := make([]interface{}, len(headers))
-		for j := 0; j < len(headers); j++ {
+		interfaceRow := make([]any, len(headers))
+		for j := range headers {
 			if j < len(row) && row[j] != "" {
 				interfaceRow[j] = row[j]
 			} else {
