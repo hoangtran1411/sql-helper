@@ -29,7 +29,6 @@ If you discover a potential security vulnerability in SQL Helper, please follow 
 1. **Do NOT report security vulnerabilities via public GitHub Issues or discussions.**
 2. Report vulnerabilities privately via one of the following methods:
    - **GitHub Private Vulnerability Reporting**: Submit a private advisory through the [Security Advisories](https://github.com/hoangtran1411/sql-helper/security/advisories) page.
-   - **Email**: Send a detailed report to [chi3xitin2010@gmail.com](mailto:chi3xitin2010@gmail.com) with the subject line `[Security] SQL Helper Vulnerability Report`.
 
 ### What to Include in Your Report
 
