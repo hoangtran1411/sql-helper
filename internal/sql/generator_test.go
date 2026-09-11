@@ -366,6 +366,47 @@ func TestFormatRowSQL(t *testing.T) {
 	}
 }
 
+func TestResolveColumns(t *testing.T) {
+	headers := []string{"id", "name", "age", "status"}
+
+	t.Run("default to all headers when selected is empty", func(t *testing.T) {
+		colMap, err := ResolveColumns(headers, nil, []string{"id", "age"})
+		if err != nil {
+			t.Fatalf("ResolveColumns() returned error: %v", err)
+		}
+		if len(colMap.ColIndices) != 4 {
+			t.Errorf("expected 4 column indices, got %d", len(colMap.ColIndices))
+		}
+		if !colMap.NumColSet["id"] || !colMap.NumColSet["age"] || colMap.NumColSet["name"] {
+			t.Errorf("unexpected NumColSet: %v", colMap.NumColSet)
+		}
+	})
+
+	t.Run("subset selection", func(t *testing.T) {
+		colMap, err := ResolveColumns(headers, []string{"name", "status"}, nil)
+		if err != nil {
+			t.Fatalf("ResolveColumns() returned error: %v", err)
+		}
+		if len(colMap.ColIndices) != 2 || colMap.ColIndices[0] != 1 || colMap.ColIndices[1] != 3 {
+			t.Errorf("unexpected colIndices: %v", colMap.ColIndices)
+		}
+	})
+
+	t.Run("empty headers and selected columns error", func(t *testing.T) {
+		_, err := ResolveColumns(nil, nil, nil)
+		if err == nil {
+			t.Error("expected error for empty headers and selected columns, got nil")
+		}
+	})
+
+	t.Run("no matching columns error", func(t *testing.T) {
+		_, err := ResolveColumns(headers, []string{"nonexistent"}, nil)
+		if err == nil {
+			t.Error("expected error for non-matching selected columns, got nil")
+		}
+	})
+}
+
 func BenchmarkGenerateBatchSQL(b *testing.B) {
 	headers := []string{"id", "name", "age", "status"}
 	dataRows := make([][]any, 1000)

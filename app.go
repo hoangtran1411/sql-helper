@@ -142,41 +142,13 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, o
 
 	writer := bufio.NewWriter(outFile)
 
-	// Determine selected columns and map indices
-	selectedCols := options.SelectedColumns
-	if len(selectedCols) == 0 {
-		selectedCols = headers
-	}
-	if len(selectedCols) == 0 {
-		return false, fmt.Errorf("no columns selected")
+	// Resolve column mapping and validation
+	colMap, err := sql.ResolveColumns(headers, options.SelectedColumns, options.NumberColumns)
+	if err != nil {
+		return false, err
 	}
 
-	headerIndexMap := make(map[string]int, len(headers))
-	for i, h := range headers {
-		if _, exists := headerIndexMap[h]; !exists {
-			headerIndexMap[h] = i
-		}
-	}
-
-	colIndices := make([]int, 0, len(selectedCols))
-	validSelectedCols := make([]string, 0, len(selectedCols))
-	for _, col := range selectedCols {
-		if idx, ok := headerIndexMap[col]; ok {
-			colIndices = append(colIndices, idx)
-			validSelectedCols = append(validSelectedCols, col)
-		}
-	}
-	if len(validSelectedCols) == 0 {
-		return false, fmt.Errorf("no valid columns found to export")
-	}
-
-	// Prepare column set for fast lookup
-	numColSet := make(map[string]bool, len(options.NumberColumns))
-	for _, col := range options.NumberColumns {
-		numColSet[col] = true
-	}
-
-	insertPrefix := sql.BuildInsertPrefix(options.TableName, validSelectedCols)
+	insertPrefix := sql.BuildInsertPrefix(options.TableName, colMap.ValidSelectedCols)
 	batchSize := max(0, options.BatchSize)
 
 	inBatchCount := 0
@@ -209,7 +181,7 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, o
 					return err
 				}
 			}
-			valStr := sql.FormatRowSQLSelected(interfaceRow, colIndices, headers, numColSet)
+			valStr := sql.FormatRowSQLSelected(interfaceRow, colMap.ColIndices, headers, colMap.NumColSet)
 			if _, err := writer.WriteString(valStr); err != nil {
 				return err
 			}
@@ -229,7 +201,7 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, o
 				}
 			}
 
-			valStr := sql.FormatRowSQLSelected(interfaceRow, colIndices, headers, numColSet)
+			valStr := sql.FormatRowSQLSelected(interfaceRow, colMap.ColIndices, headers, colMap.NumColSet)
 			if _, err := writer.WriteString(valStr); err != nil {
 				return err
 			}

@@ -48,22 +48,24 @@ func BuildInsertPrefix(tableName string, columns []string) string {
 	return b.String()
 }
 
-// GenerateBatchSQL generates SQL INSERT statements (or raw VALUES) according to opts.
-func GenerateBatchSQL(headers []string, dataRows [][]any, opts GenerateOptions) string {
-	if len(dataRows) == 0 {
-		return ""
-	}
+// ColumnMapping holds resolved column indices, valid column names, and numeric lookup set
+type ColumnMapping struct {
+	ColIndices        []int
+	ValidSelectedCols []string
+	NumColSet         map[string]bool
+}
 
-	// Default to all headers if SelectedColumns is empty or nil
-	selectedCols := opts.SelectedColumns
+// ResolveColumns maps selected column names to indices and resolves numeric columns.
+// Returns an error if no columns are selected or no selected columns exist in headers.
+func ResolveColumns(headers, selectedColumns, numberColumns []string) (*ColumnMapping, error) {
+	selectedCols := selectedColumns
 	if len(selectedCols) == 0 {
 		selectedCols = headers
 	}
 	if len(selectedCols) == 0 {
-		return ""
+		return nil, fmt.Errorf("no columns selected")
 	}
 
-	// Map headers to original indices
 	headerIndexMap := make(map[string]int, len(headers))
 	for i, h := range headers {
 		if _, exists := headerIndexMap[h]; !exists {
@@ -80,17 +82,34 @@ func GenerateBatchSQL(headers []string, dataRows [][]any, opts GenerateOptions) 
 		}
 	}
 	if len(validSelectedCols) == 0 {
-		return ""
+		return nil, fmt.Errorf("no valid columns found to export")
 	}
 
-	// Convert numberColumns to map for O(1) lookup
-	numColSet := make(map[string]bool, len(opts.NumberColumns))
-	for _, col := range opts.NumberColumns {
+	numColSet := make(map[string]bool, len(numberColumns))
+	for _, col := range numberColumns {
 		numColSet[col] = true
 	}
 
+	return &ColumnMapping{
+		ColIndices:        colIndices,
+		ValidSelectedCols: validSelectedCols,
+		NumColSet:         numColSet,
+	}, nil
+}
+
+// GenerateBatchSQL generates SQL INSERT statements (or raw VALUES) according to opts.
+func GenerateBatchSQL(headers []string, dataRows [][]any, opts GenerateOptions) string {
+	if len(dataRows) == 0 {
+		return ""
+	}
+
+	colMap, err := ResolveColumns(headers, opts.SelectedColumns, opts.NumberColumns)
+	if err != nil {
+		return ""
+	}
+
 	// Estimated allocation
-	estimatedSize := len(dataRows) * len(validSelectedCols) * 25
+	estimatedSize := len(dataRows) * len(colMap.ValidSelectedCols) * 25
 	var builder strings.Builder
 	builder.Grow(estimatedSize)
 
@@ -100,13 +119,13 @@ func GenerateBatchSQL(headers []string, dataRows [][]any, opts GenerateOptions) 
 			if rowIdx > 0 {
 				builder.WriteString(",\n")
 			}
-			builder.WriteString(FormatRowSQLSelected(row, colIndices, headers, numColSet))
+			builder.WriteString(FormatRowSQLSelected(row, colMap.ColIndices, headers, colMap.NumColSet))
 		}
 		return builder.String()
 	}
 
 	// Batch INSERT mode
-	prefix := BuildInsertPrefix(opts.TableName, validSelectedCols)
+	prefix := BuildInsertPrefix(opts.TableName, colMap.ValidSelectedCols)
 	batchSize := max(0, opts.BatchSize)
 
 	inBatchCount := 0
@@ -120,7 +139,7 @@ func GenerateBatchSQL(headers []string, dataRows [][]any, opts GenerateOptions) 
 			builder.WriteString(",\n")
 		}
 
-		builder.WriteString(FormatRowSQLSelected(row, colIndices, headers, numColSet))
+		builder.WriteString(FormatRowSQLSelected(row, colMap.ColIndices, headers, colMap.NumColSet))
 		inBatchCount++
 
 		if batchSize > 0 && inBatchCount == batchSize {

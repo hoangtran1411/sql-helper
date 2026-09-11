@@ -58,7 +58,7 @@ func FormatNumericValue(value any) string {
 func FormatTextValue(value any) string {
 	switch v := value.(type) {
 	case time.Time:
-		return fmt.Sprintf("'%s'", v.Format("2006-01-02 15:04:05"))
+		return "'" + v.Format("2006-01-02 15:04:05") + "'"
 	case string:
 
 		// Optimization: heuristic check for date-like string (YYYY-MM-DD...)
@@ -66,16 +66,16 @@ func FormatTextValue(value any) string {
 		if len(v) >= 10 && v[4] == '-' && v[7] == '-' {
 			// Check if it's an ISO date string
 			if t, err := time.Parse(time.RFC3339, v); err == nil {
-				return fmt.Sprintf("'%s'", t.Format("2006-01-02 15:04:05"))
+				return "'" + t.Format("2006-01-02 15:04:05") + "'"
 			}
 			// Try other date formats
 			if t, err := time.Parse("2006-01-02T15:04:05", v); err == nil {
-				return fmt.Sprintf("'%s'", t.Format("2006-01-02 15:04:05"))
+				return "'" + t.Format("2006-01-02 15:04:05") + "'"
 			}
 		}
 		// Escape single quotes and wrap
 		escaped := strings.ReplaceAll(v, "'", "''")
-		return fmt.Sprintf("'%s'", escaped)
+		return "'" + escaped + "'"
 	case bool:
 		if v {
 			return "'TRUE'"
@@ -85,6 +85,6 @@ func FormatTextValue(value any) string {
 		// Convert to string and escape
 		s := fmt.Sprintf("%v", v)
 		escaped := strings.ReplaceAll(s, "'", "''")
-		return fmt.Sprintf("'%s'", escaped)
+		return "'" + escaped + "'"
 	}
 }
