@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -67,7 +68,7 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return info
 	}
 
@@ -104,24 +105,20 @@ func CompareVersions(v1, v2 string) bool {
 	parts1 := parseVersion(v1)
 	parts2 := parseVersion(v2)
 
-	for i := range 3 {
-		if parts1[i] > parts2[i] {
-			return true
-		}
-		if parts1[i] < parts2[i] {
-			return false
-		}
-	}
-	return false
+	return slices.Compare(parts1[:], parts2[:]) > 0
 }
 
 // parseVersion splits version string into [major, minor, patch] integers
 func parseVersion(v string) [3]int {
 	var result [3]int
-	parts := strings.Split(v, ".")
-	for i := range min(len(parts), 3) {
+	i := 0
+	for part := range strings.SplitSeq(v, ".") {
+		if i >= 3 {
+			break
+		}
 		//nolint:errcheck // default to 0 on parse failure
-		fmt.Sscanf(parts[i], "%d", &result[i])
+		fmt.Sscanf(part, "%d", &result[i])
+		i++
 	}
 	return result
 }
@@ -159,7 +156,7 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return false, fmt.Errorf("download failed with status: %d", resp.StatusCode)
 	}
 
@@ -187,7 +184,7 @@ start "" "%s"
 del "%%~f0"
 `, exePath, tempFile, exePath, exePath)
 
-	if err := os.WriteFile(batchPath, []byte(batchContent), 0644); err != nil {
+	if err := os.WriteFile(batchPath, []byte(batchContent), 0o644); err != nil {
 		return false, fmt.Errorf("failed to create update script: %w", err)
 	}
 

@@ -93,7 +93,7 @@ func TestGenerateSQLValues_LargeDataset(t *testing.T) {
 	// Test with larger dataset to verify performance
 	headers := []string{"ID", "Name", "Value"}
 	dataRows := make([][]any, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		dataRows[i] = []any{i, "Name" + string(rune('A'+i%26)), float64(i) * 1.5}
 	}
 
@@ -352,4 +352,34 @@ func TestGenerateBatchSQL(t *testing.T) {
 			t.Errorf("Expected empty string for non-matching columns, got %q", result)
 		}
 	})
+}
+
+func TestFormatRowSQL(t *testing.T) {
+	headers := []string{"id", "name", "price"}
+	row := []any{1, "Widget", 19.99}
+	numCols := map[string]bool{"id": true, "price": true}
+
+	result := FormatRowSQL(row, headers, numCols)
+	expected := "(1, 'Widget', 19.99)"
+	if result != expected {
+		t.Errorf("FormatRowSQL() = %q, want %q", result, expected)
+	}
+}
+
+func BenchmarkGenerateBatchSQL(b *testing.B) {
+	headers := []string{"id", "name", "age", "status"}
+	dataRows := make([][]any, 1000)
+	for i := range 1000 {
+		dataRows[i] = []any{i, "Alice", 30, "active"}
+	}
+	opts := GenerateOptions{
+		TableName:     "users",
+		NumberColumns: []string{"id", "age"},
+		BatchSize:     500,
+	}
+
+	b.ResetTimer()
+	for b.Loop() {
+		_ = GenerateBatchSQL(headers, dataRows, opts)
+	}
 }

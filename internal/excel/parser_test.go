@@ -276,3 +276,64 @@ func TestGetPreview_SparseData(t *testing.T) {
 		t.Errorf("Expected '1' at [0][0], got %v", data.DataRows[0][0])
 	}
 }
+
+func TestIterateSheet(t *testing.T) {
+	tempDir := t.TempDir()
+	testData := [][]string{
+		{"ID", "Name", "City"},
+		{"1", "Alice", "Hanoi"},
+		{"2", "Bob", "Danang"},
+		{"3", "Charlie", "Saigon"},
+	}
+	filePath := createTestExcelFile(t, tempDir, testData)
+
+	t.Run("successful streaming", func(t *testing.T) {
+		var collected [][]string
+		err := IterateSheet(filePath, "Sheet1", func(row []string) error {
+			collected = append(collected, row)
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("IterateSheet failed: %v", err)
+		}
+		if len(collected) != 3 {
+			t.Fatalf("Expected 3 rows, got %d", len(collected))
+		}
+		if collected[0][1] != "Alice" || collected[2][2] != "Saigon" {
+			t.Errorf("Unexpected row content: %v", collected)
+		}
+	})
+
+	t.Run("callback error terminates iteration", func(t *testing.T) {
+		count := 0
+		customErr := excelize.ErrSheetNotExist{SheetName: "test"}
+		err := IterateSheet(filePath, "Sheet1", func(row []string) error {
+			count++
+			return customErr
+		})
+		if err == nil {
+			t.Fatal("Expected error from callback, got nil")
+		}
+		if count != 1 {
+			t.Errorf("Expected exactly 1 iteration before error, got %d", count)
+		}
+	})
+
+	t.Run("nonexistent file", func(t *testing.T) {
+		err := IterateSheet("nonexistent.xlsx", "Sheet1", func(row []string) error {
+			return nil
+		})
+		if err == nil {
+			t.Error("Expected error for nonexistent file, got nil")
+		}
+	})
+
+	t.Run("nonexistent sheet", func(t *testing.T) {
+		err := IterateSheet(filePath, "NonExistentSheet", func(row []string) error {
+			return nil
+		})
+		if err == nil {
+			t.Error("Expected error for nonexistent sheet, got nil")
+		}
+	})
+}
