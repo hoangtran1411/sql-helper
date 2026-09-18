@@ -90,7 +90,7 @@ func (a *App) GenerateSQL(headers []string, dataRows [][]any, options SQLOptions
 
 // FindAndReplace replaces values in the data rows
 func (a *App) FindAndReplace(dataRows [][]any, findValue, replaceWith string) [][]any {
-	return sql.FindAndReplace(dataRows, findValue, replaceWith)
+	return excel.FindAndReplace(dataRows, findValue, replaceWith)
 }
 
 // CopyToClipboard copies text to the clipboard
@@ -102,10 +102,7 @@ func (a *App) CopyToClipboard(text string) error {
 }
 
 // Replacement defines a find-and-replace rule
-type Replacement struct {
-	Find    string `json:"find"`
-	Replace string `json:"replace"`
-}
+type Replacement = excel.Replacement
 
 // ExportSQLStream streams data from an Excel sheet to an io.Writer using sql.BatchWriter.
 // This decouples SQL streaming from UI dialogs, enabling O(1) memory exports and direct testing.
@@ -121,29 +118,7 @@ func ExportSQLStream(w io.Writer, filePath, sheetName string, headers []string, 
 		return fmt.Errorf("failed to initialize batch writer: %w", err)
 	}
 
-	err = excel.IterateSheet(filePath, sheetName, func(row []string) error {
-		// Apply replacements to raw strings first
-		for i := range row {
-			for _, r := range replacements {
-				if row[i] == r.Find {
-					row[i] = r.Replace
-				}
-			}
-		}
-
-		// Convert string row to interface row for the formatter
-		interfaceRow := make([]any, len(headers))
-		for i := range headers {
-			if i < len(row) && row[i] != "" {
-				interfaceRow[i] = row[i]
-			} else {
-				interfaceRow[i] = nil
-			}
-		}
-
-		return bw.WriteRow(interfaceRow)
-	})
-	if err != nil {
+	if err := excel.StreamRows(filePath, sheetName, headers, replacements, bw.WriteRow); err != nil {
 		return fmt.Errorf("streaming failed: %w", err)
 	}
 
