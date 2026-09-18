@@ -187,7 +187,7 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, o
 	defer func() {
 		_ = outFile.Close()
 	}()
- 
+
 	writer := bufio.NewWriter(outFile)
 	if err := ExportSQLStream(writer, filePath, sheetName, headers, options, replacements); err != nil {
 		return false, err
