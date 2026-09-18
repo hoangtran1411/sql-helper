@@ -185,12 +185,15 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, o
 		return false, fmt.Errorf("failed to create output file: %w", err)
 	}
 	defer func() {
-		_ = outFile.Close()
+		_ = outFile.Close() // best-effort file cleanup on exit
 	}()
 
 	writer := bufio.NewWriter(outFile)
 	if err := ExportSQLStream(writer, filePath, sheetName, headers, options, replacements); err != nil {
 		return false, err
+	}
+	if err := writer.Flush(); err != nil {
+		return false, fmt.Errorf("failed to flush buffer: %w", err)
 	}
 	return true, nil
 }

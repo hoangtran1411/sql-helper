@@ -223,10 +223,12 @@ func createTestExcelFile(t *testing.T, dir string, data [][]string) string {
 		for j, cell := range row {
 			cellName, err := excelize.CoordinatesToCellName(j+1, i+1)
 			if err != nil {
-				t.Fatalf("CoordinatesToCellName(%d, %d) failed: %v", j+1, i+1, err)
+				t.Errorf("CoordinatesToCellName(%d, %d) failed: %v", j+1, i+1, err)
+				return ""
 			}
 			if err := f.SetCellValue("Sheet1", cellName, cell); err != nil {
-				t.Fatalf("SetCellValue failed: %v", err)
+				t.Errorf("SetCellValue failed: %v", err)
+				return ""
 			}
 		}
 	}
@@ -582,8 +584,12 @@ func TestExportSQLStream_ToFile(t *testing.T) {
 
 	writer := bufio.NewWriter(outFile)
 	if err := ExportSQLStream(writer, excelPath, "Sheet1", headers, opts, nil); err != nil {
-		_ = outFile.Close()
+		_ = outFile.Close() // best-effort file cleanup on failure
 		t.Fatalf("ExportSQLStream() failed: %v", err)
+	}
+	if err := writer.Flush(); err != nil {
+		_ = outFile.Close() // best-effort file cleanup on failure
+		t.Fatalf("writer.Flush() failed: %v", err)
 	}
 	if err := outFile.Close(); err != nil {
 		t.Fatalf("Failed to close output file: %v", err)
@@ -601,9 +607,4 @@ func TestExportSQLStream_ToFile(t *testing.T) {
 	if string(content) != expected {
 		t.Errorf("File content mismatch:\ngot:\n%s\nwant:\n%s", string(content), expected)
 	}
-}
-
-func TestExportToFileLogic(t *testing.T) {
-	// Replaced old dummy static file write with real ExportSQLStream file export
-	TestExportSQLStream_ToFile(t)
 }

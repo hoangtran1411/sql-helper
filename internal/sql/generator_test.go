@@ -615,7 +615,8 @@ func TestBatchWriter_TableDriven(t *testing.T) {
 
 			for _, row := range tt.dataRows {
 				if err := bw.WriteRow(row); err != nil {
-					t.Fatalf("WriteRow() error = %v", err)
+					t.Errorf("WriteRow() error = %v", err)
+					break
 				}
 			}
 
@@ -643,17 +644,17 @@ func TestBatchWriter_TotalRows(t *testing.T) {
 		t.Errorf("expected 0 total rows, got %d", bw.TotalRows())
 	}
 
-	_ = bw.WriteRow([]any{1, "Alice"})
+	_ = bw.WriteRow([]any{1, "Alice"}) //nolint:errcheck // total rows counter test; write error tested separately
 	if bw.TotalRows() != 1 {
 		t.Errorf("expected 1 total rows, got %d", bw.TotalRows())
 	}
 
-	_ = bw.WriteRow([]any{2, "Bob"})
+	_ = bw.WriteRow([]any{2, "Bob"}) //nolint:errcheck // total rows counter test; write error tested separately
 	if bw.TotalRows() != 2 {
 		t.Errorf("expected 2 total rows, got %d", bw.TotalRows())
 	}
 
-	_ = bw.Close()
+	_ = bw.Close() //nolint:errcheck // total rows persistence test; close error tested separately
 	if bw.TotalRows() != 2 {
 		t.Errorf("expected 2 total rows after close, got %d", bw.TotalRows())
 	}
@@ -676,9 +677,14 @@ func TestBatchWriter_BufioFlush(t *testing.T) {
 		t.Fatalf("WriteRow() error = %v", err)
 	}
 
-	// Close must flush bufWriter automatically
+	// Close finalizes SQL without flushing the buffer
 	if err := bw.Close(); err != nil {
 		t.Fatalf("Close() error = %v", err)
+	}
+
+	// Buffer flushing is caller's responsibility
+	if err := bufWriter.Flush(); err != nil {
+		t.Fatalf("bufWriter.Flush() error = %v", err)
 	}
 
 	expected := "INSERT INTO users (id, name) VALUES\n(1, 'Alice');"
@@ -709,11 +715,18 @@ func TestBatchWriter_FlushError(t *testing.T) {
 		t.Fatalf("NewBatchWriter() error = %v", err)
 	}
 
-	_ = bw.WriteRow([]any{1, "Alice"})
+	if err := bw.WriteRow([]any{1, "Alice"}); err != nil {
+		t.Fatalf("WriteRow() error = %v", err)
+	}
 
-	err = bw.Close()
-	if err == nil || !strings.Contains(err.Error(), "simulated flush failure") {
-		t.Errorf("Close() error = %v, expected simulated flush failure", err)
+	// Close should not flush; caller is responsible for flushing buffer.
+	if err := bw.Close(); err != nil {
+		t.Errorf("Close() error = %v, expected nil as Close does not flush", err)
+	}
+
+	// Calling Flush on writer directly returns the simulated error.
+	if err := fw.Flush(); !errors.Is(err, expectedErr) {
+		t.Errorf("fw.Flush() error = %v, want %v", err, expectedErr)
 	}
 }
 
@@ -777,7 +790,7 @@ func TestBatchWriter_WriteErrors(t *testing.T) {
 			t.Fatalf("NewBatchWriter() error = %v", err)
 		}
 
-		_ = bw.WriteRow([]any{1, "Alice"})
+		_ = bw.WriteRow([]any{1, "Alice"}) // error is verified on Close
 
 		err = bw.Close()
 		if err == nil {
@@ -800,6 +813,6 @@ func BenchmarkGenerateBatchSQL(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		_ = GenerateBatchSQL(headers, dataRows, opts)
+		_ = GenerateBatchSQL(headers, dataRows, opts) //nolint:errcheck // benchmark execution result intentionally discarded
 	}
 }

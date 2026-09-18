@@ -143,21 +143,13 @@ func (bw *BatchWriter) writeString(s string) error {
 
 // WriteRow writes a single row of data to the SQL batch stream.
 func (bw *BatchWriter) WriteRow(row []any) error {
-	if bw.valuesOnly {
+	if bw.valuesOnly || bw.inBatchCount > 0 {
 		if bw.totalRows > 0 {
 			if err := bw.writeString(",\n"); err != nil {
 				return err
 			}
 		}
-		valStr := FormatRowSQLSelected(row, bw.colMap.ColIndices, bw.headers, bw.colMap.NumColSet)
-		if err := bw.writeString(valStr); err != nil {
-			return err
-		}
-		bw.totalRows++
-		return nil
-	}
-
-	if bw.inBatchCount == 0 {
+	} else {
 		if bw.totalRows > 0 {
 			if err := bw.writeString("\n\n"); err != nil {
 				return err
@@ -166,42 +158,34 @@ func (bw *BatchWriter) WriteRow(row []any) error {
 		if err := bw.writeString(bw.prefix); err != nil {
 			return err
 		}
-	} else {
-		if err := bw.writeString(",\n"); err != nil {
-			return err
-		}
 	}
 
 	valStr := FormatRowSQLSelected(row, bw.colMap.ColIndices, bw.headers, bw.colMap.NumColSet)
 	if err := bw.writeString(valStr); err != nil {
 		return err
 	}
-	bw.inBatchCount++
 	bw.totalRows++
 
-	if bw.batchSize > 0 && bw.inBatchCount == bw.batchSize {
-		if err := bw.writeString(";"); err != nil {
-			return err
+	if !bw.valuesOnly {
+		bw.inBatchCount++
+		if bw.batchSize > 0 && bw.inBatchCount == bw.batchSize {
+			if err := bw.writeString(";"); err != nil {
+				return err
+			}
+			bw.inBatchCount = 0
 		}
-		bw.inBatchCount = 0
 	}
 
 	return nil
 }
 
-// Close finalizes the SQL batch output, writing any trailing semicolon and flushing buffers if applicable.
+// Close finalizes the SQL batch output, writing any trailing semicolon.
 func (bw *BatchWriter) Close() error {
 	if !bw.valuesOnly && bw.inBatchCount > 0 {
 		if err := bw.writeString(";"); err != nil {
 			return err
 		}
 		bw.inBatchCount = 0
-	}
-
-	if f, ok := bw.w.(interface{ Flush() error }); ok {
-		if err := f.Flush(); err != nil {
-			return fmt.Errorf("flush writer: %w", err)
-		}
 	}
 
 	return nil
