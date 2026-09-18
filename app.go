@@ -139,7 +139,7 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, o
 	defer func() {
 		_ = outFile.Close()
 	}()
-
+ 
 	writer := bufio.NewWriter(outFile)
 
 	// Resolve column mapping and validation
