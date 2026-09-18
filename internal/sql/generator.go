@@ -3,6 +3,7 @@ package sql
 import (
 	"cmp"
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -97,59 +98,125 @@ func ResolveColumns(headers, selectedColumns, numberColumns []string) (*ColumnMa
 	}, nil
 }
 
+// BatchWriter streams SQL statements or values into an io.Writer.
+type BatchWriter struct {
+	w            io.Writer
+	headers      []string
+	colMap       *ColumnMapping
+	prefix       string
+	batchSize    int
+	valuesOnly   bool
+	inBatchCount int
+	totalRows    int
+}
+
+// NewBatchWriter creates a new BatchWriter for streaming SQL statements.
+func NewBatchWriter(w io.Writer, headers []string, opts GenerateOptions) (*BatchWriter, error) {
+	if w == nil {
+		return nil, fmt.Errorf("writer cannot be nil")
+	}
+
+	colMap, err := ResolveColumns(headers, opts.SelectedColumns, opts.NumberColumns)
+	if err != nil {
+		return nil, fmt.Errorf("resolve columns: %w", err)
+	}
+
+	prefix := BuildInsertPrefix(opts.TableName, colMap.ValidSelectedCols)
+	batchSize := max(0, opts.BatchSize)
+
+	return &BatchWriter{
+		w:          w,
+		headers:    headers,
+		colMap:     colMap,
+		prefix:     prefix,
+		batchSize:  batchSize,
+		valuesOnly: opts.ValuesOnly,
+	}, nil
+}
+
+func (bw *BatchWriter) writeString(s string) error {
+	if _, err := io.WriteString(bw.w, s); err != nil {
+		return fmt.Errorf("write sql: %w", err)
+	}
+	return nil
+}
+
+// WriteRow writes a single row of data to the SQL batch stream.
+func (bw *BatchWriter) WriteRow(row []any) error {
+	if bw.valuesOnly || bw.inBatchCount > 0 {
+		if bw.totalRows > 0 {
+			if err := bw.writeString(",\n"); err != nil {
+				return err
+			}
+		}
+	} else {
+		if bw.totalRows > 0 {
+			if err := bw.writeString("\n\n"); err != nil {
+				return err
+			}
+		}
+		if err := bw.writeString(bw.prefix); err != nil {
+			return err
+		}
+	}
+
+	valStr := FormatRowSQLSelected(row, bw.colMap.ColIndices, bw.headers, bw.colMap.NumColSet)
+	if err := bw.writeString(valStr); err != nil {
+		return err
+	}
+	bw.totalRows++
+
+	if !bw.valuesOnly {
+		bw.inBatchCount++
+		if bw.batchSize > 0 && bw.inBatchCount == bw.batchSize {
+			if err := bw.writeString(";"); err != nil {
+				return err
+			}
+			bw.inBatchCount = 0
+		}
+	}
+
+	return nil
+}
+
+// Close finalizes the SQL batch output, writing any trailing semicolon.
+func (bw *BatchWriter) Close() error {
+	if !bw.valuesOnly && bw.inBatchCount > 0 {
+		if err := bw.writeString(";"); err != nil {
+			return err
+		}
+		bw.inBatchCount = 0
+	}
+
+	return nil
+}
+
+// TotalRows returns the total number of rows written by this BatchWriter.
+func (bw *BatchWriter) TotalRows() int {
+	return bw.totalRows
+}
+
 // GenerateBatchSQL generates SQL INSERT statements (or raw VALUES) according to opts.
 func GenerateBatchSQL(headers []string, dataRows [][]any, opts GenerateOptions) string {
 	if len(dataRows) == 0 {
 		return ""
 	}
 
-	colMap, err := ResolveColumns(headers, opts.SelectedColumns, opts.NumberColumns)
+	var builder strings.Builder
+	bw, err := NewBatchWriter(&builder, headers, opts)
 	if err != nil {
 		return ""
 	}
+	builder.Grow(len(dataRows) * len(bw.colMap.ValidSelectedCols) * 25)
 
-	// Estimated allocation
-	estimatedSize := len(dataRows) * len(colMap.ValidSelectedCols) * 25
-	var builder strings.Builder
-	builder.Grow(estimatedSize)
-
-	// If ValuesOnly mode, generate comma-separated tuples
-	if opts.ValuesOnly {
-		for rowIdx, row := range dataRows {
-			if rowIdx > 0 {
-				builder.WriteString(",\n")
-			}
-			builder.WriteString(FormatRowSQLSelected(row, colMap.ColIndices, headers, colMap.NumColSet))
-		}
-		return builder.String()
-	}
-
-	// Batch INSERT mode
-	prefix := BuildInsertPrefix(opts.TableName, colMap.ValidSelectedCols)
-	batchSize := max(0, opts.BatchSize)
-
-	inBatchCount := 0
-	for rowIdx, row := range dataRows {
-		if inBatchCount == 0 {
-			if rowIdx > 0 {
-				builder.WriteString("\n\n")
-			}
-			builder.WriteString(prefix)
-		} else {
-			builder.WriteString(",\n")
-		}
-
-		builder.WriteString(FormatRowSQLSelected(row, colMap.ColIndices, headers, colMap.NumColSet))
-		inBatchCount++
-
-		if batchSize > 0 && inBatchCount == batchSize {
-			builder.WriteString(";")
-			inBatchCount = 0
+	for _, row := range dataRows {
+		if err := bw.WriteRow(row); err != nil {
+			return ""
 		}
 	}
 
-	if inBatchCount > 0 {
-		builder.WriteString(";")
+	if err := bw.Close(); err != nil {
+		return ""
 	}
 
 	return builder.String()
@@ -199,23 +266,4 @@ func FormatRowSQLSelected(row []any, colIndices []int, headers []string, numColS
 
 	builder.WriteByte(')')
 	return builder.String()
-}
-
-// FindAndReplace replaces values in the data rows
-func FindAndReplace(dataRows [][]any, findValue, replaceWith string) [][]any {
-	if dataRows == nil {
-		return make([][]any, 0)
-	}
-
-	for _, row := range dataRows {
-		for j, cell := range row {
-			// Convert to string to check value - simple robust check
-			// Optimization: could be type-specific but generic is safer for now
-			if fmt.Sprintf("%v", cell) == findValue {
-				row[j] = replaceWith
-			}
-		}
-	}
-
-	return dataRows
 }

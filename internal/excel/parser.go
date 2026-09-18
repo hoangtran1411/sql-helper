@@ -1,6 +1,8 @@
 package excel
 
 import (
+	"fmt"
+
 	"github.com/xuri/excelize/v2"
 )
 
@@ -8,6 +10,12 @@ import (
 type SheetData struct {
 	Headers  []string `json:"headers"`
 	DataRows [][]any  `json:"dataRows"`
+}
+
+// Replacement defines a find-and-replace rule
+type Replacement struct {
+	Find    string `json:"find"`
+	Replace string `json:"replace"`
 }
 
 // ParseExcelFile opens an Excel file and returns the list of sheet names
@@ -59,15 +67,7 @@ func GetPreview(filePath, sheetName string, limit int) (*SheetData, error) {
 			continue
 		}
 
-		// Create interface slice for the row
-		interfaceRow := make([]any, len(headers))
-		for j := range headers {
-			if j < len(row) && row[j] != "" {
-				interfaceRow[j] = row[j]
-			} else {
-				interfaceRow[j] = nil
-			}
-		}
+		interfaceRow := normalizeRow(row, len(headers), nil)
 		dataRows = append(dataRows, interfaceRow)
 		rowCount++
 	}
@@ -110,4 +110,51 @@ func IterateSheet(filePath, sheetName string, onRow func(row []string) error) er
 		}
 	}
 	return nil
+}
+
+// normalizeRow normalizes a raw string slice into an interface row of length numHeaders,
+// applying any replacements and converting empty strings to nil.
+func normalizeRow(rawRow []string, numHeaders int, replacements []Replacement) []any {
+	row := make([]any, numHeaders)
+	for j := range numHeaders {
+		if j < len(rawRow) {
+			val := rawRow[j]
+			for _, r := range replacements {
+				if val == r.Find {
+					val = r.Replace
+				}
+			}
+			if val != "" {
+				row[j] = val
+				continue
+			}
+		}
+		row[j] = nil
+	}
+	return row
+}
+
+// FindAndReplace replaces matching string cell values in 2D interface rows.
+func FindAndReplace(dataRows [][]any, findValue, replaceWith string) [][]any {
+	if dataRows == nil {
+		return make([][]any, 0)
+	}
+
+	for _, row := range dataRows {
+		for j, cell := range row {
+			if fmt.Sprintf("%v", cell) == findValue {
+				row[j] = replaceWith
+			}
+		}
+	}
+
+	return dataRows
+}
+
+// StreamRows streams normalized rows from an Excel sheet to a callback.
+func StreamRows(filePath, sheetName string, headers []string, replacements []Replacement, onRow func(row []any) error) error {
+	return IterateSheet(filePath, sheetName, func(rawRow []string) error {
+		normRow := normalizeRow(rawRow, len(headers), replacements)
+		return onRow(normRow)
+	})
 }

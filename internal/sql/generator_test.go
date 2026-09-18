@@ -1,6 +1,10 @@
 package sql
 
 import (
+	"bufio"
+	"bytes"
+	"errors"
+	"io"
 	"strings"
 	"testing"
 )
@@ -107,101 +111,6 @@ func TestGenerateSQLValues_LargeDataset(t *testing.T) {
 	lines := strings.Split(result, "\n")
 	if len(lines) != 100 {
 		t.Errorf("Expected 100 lines, got %d", len(lines))
-	}
-}
-
-func TestFindAndReplace(t *testing.T) {
-	tests := []struct {
-		name        string
-		dataRows    [][]any
-		findValue   string
-		replaceWith string
-		expected    [][]any
-	}{
-		{
-			name: "simple replace",
-			dataRows: [][]any{
-				{"Hello", "World"},
-				{"Hello", "There"},
-			},
-			findValue:   "Hello",
-			replaceWith: "Hi",
-			expected: [][]any{
-				{"Hi", "World"},
-				{"Hi", "There"},
-			},
-		},
-		{
-			name: "no match",
-			dataRows: [][]any{
-				{"A", "B"},
-			},
-			findValue:   "X",
-			replaceWith: "Y",
-			expected: [][]any{
-				{"A", "B"},
-			},
-		},
-		{
-			name: "replace with empty",
-			dataRows: [][]any{
-				{"Remove", "Keep"},
-			},
-			findValue:   "Remove",
-			replaceWith: "",
-			expected: [][]any{
-				{"", "Keep"},
-			},
-		},
-		{
-			name: "replace number as string",
-			dataRows: [][]any{
-				{123, "text"},
-			},
-			findValue:   "123",
-			replaceWith: "456",
-			expected: [][]any{
-				{"456", "text"},
-			},
-		},
-		{
-			name: "nil handling",
-			dataRows: [][]any{
-				{nil, "value"},
-			},
-			findValue:   "<nil>",
-			replaceWith: "NULL",
-			expected: [][]any{
-				{"NULL", "value"},
-			},
-		},
-		{
-			name:        "empty rows",
-			dataRows:    [][]any{},
-			findValue:   "X",
-			replaceWith: "Y",
-			expected:    [][]any{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := FindAndReplace(tt.dataRows, tt.findValue, tt.replaceWith)
-
-			if len(result) != len(tt.expected) {
-				t.Errorf("FindAndReplace() returned %d rows; want %d", len(result), len(tt.expected))
-				return
-			}
-
-			for i, row := range result {
-				for j, cell := range row {
-					expectedCell := tt.expected[i][j]
-					if cell != expectedCell {
-						t.Errorf("FindAndReplace()[%d][%d] = %v; want %v", i, j, cell, expectedCell)
-					}
-				}
-			}
-		})
 	}
 }
 
@@ -407,6 +316,394 @@ func TestResolveColumns(t *testing.T) {
 	})
 }
 
+func TestNewBatchWriter(t *testing.T) {
+	headers := []string{"id", "name"}
+
+	tests := []struct {
+		name      string
+		w         io.Writer
+		headers   []string
+		opts      GenerateOptions
+		expectErr bool
+	}{
+		{
+			name:      "nil writer",
+			w:         nil,
+			headers:   headers,
+			opts:      GenerateOptions{},
+			expectErr: true,
+		},
+		{
+			name:      "empty headers",
+			w:         &bytes.Buffer{},
+			headers:   nil,
+			opts:      GenerateOptions{},
+			expectErr: true,
+		},
+		{
+			name:    "invalid selected columns",
+			w:       &bytes.Buffer{},
+			headers: headers,
+			opts: GenerateOptions{
+				SelectedColumns: []string{"unknown_col"},
+			},
+			expectErr: true,
+		},
+		{
+			name:    "valid writer and headers",
+			w:       &bytes.Buffer{},
+			headers: headers,
+			opts: GenerateOptions{
+				TableName: "users",
+			},
+			expectErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bw, err := NewBatchWriter(tt.w, tt.headers, tt.opts)
+			if (err != nil) != tt.expectErr {
+				t.Fatalf("NewBatchWriter() error = %v, expectErr %v", err, tt.expectErr)
+			}
+			if !tt.expectErr && bw == nil {
+				t.Fatal("expected non-nil BatchWriter")
+			}
+		})
+	}
+}
+
+func TestBatchWriter_TableDriven(t *testing.T) {
+	headers := []string{"id", "name", "price"}
+
+	tests := []struct {
+		name     string
+		opts     GenerateOptions
+		dataRows [][]any
+		expected string
+	}{
+		{
+			name: "single row default batch",
+			opts: GenerateOptions{
+				TableName:     "items",
+				NumberColumns: []string{"id", "price"},
+				BatchSize:     10,
+			},
+			dataRows: [][]any{
+				{1, "Apple", 1.25},
+			},
+			expected: "INSERT INTO items (id, name, price) VALUES\n" +
+				"(1, 'Apple', 1.25);",
+		},
+		{
+			name: "multiple rows single batch",
+			opts: GenerateOptions{
+				TableName:     "items",
+				NumberColumns: []string{"id", "price"},
+				BatchSize:     5,
+			},
+			dataRows: [][]any{
+				{1, "Apple", 1.25},
+				{2, "Banana", 0.75},
+			},
+			expected: "INSERT INTO items (id, name, price) VALUES\n" +
+				"(1, 'Apple', 1.25),\n" +
+				"(2, 'Banana', 0.75);",
+		},
+		{
+			name: "exact multiple of batch size",
+			opts: GenerateOptions{
+				TableName:     "items",
+				NumberColumns: []string{"id", "price"},
+				BatchSize:     2,
+			},
+			dataRows: [][]any{
+				{1, "Apple", 1.25},
+				{2, "Banana", 0.75},
+			},
+			expected: "INSERT INTO items (id, name, price) VALUES\n" +
+				"(1, 'Apple', 1.25),\n" +
+				"(2, 'Banana', 0.75);",
+		},
+		{
+			name: "chunked batches across boundary",
+			opts: GenerateOptions{
+				TableName:     "items",
+				NumberColumns: []string{"id", "price"},
+				BatchSize:     2,
+			},
+			dataRows: [][]any{
+				{1, "Apple", 1.25},
+				{2, "Banana", 0.75},
+				{3, "Cherry", 2.5},
+			},
+			expected: "INSERT INTO items (id, name, price) VALUES\n" +
+				"(1, 'Apple', 1.25),\n" +
+				"(2, 'Banana', 0.75);\n\n" +
+				"INSERT INTO items (id, name, price) VALUES\n" +
+				"(3, 'Cherry', 2.5);",
+		},
+		{
+			name: "batch size 1",
+			opts: GenerateOptions{
+				TableName:     "items",
+				NumberColumns: []string{"id", "price"},
+				BatchSize:     1,
+			},
+			dataRows: [][]any{
+				{1, "Apple", 1.25},
+				{2, "Banana", 0.75},
+			},
+			expected: "INSERT INTO items (id, name, price) VALUES\n" +
+				"(1, 'Apple', 1.25);\n\n" +
+				"INSERT INTO items (id, name, price) VALUES\n" +
+				"(2, 'Banana', 0.75);",
+		},
+		{
+			name: "batch size 0 unlimited",
+			opts: GenerateOptions{
+				TableName:     "items",
+				NumberColumns: []string{"id", "price"},
+				BatchSize:     0,
+			},
+			dataRows: [][]any{
+				{1, "Apple", 1.25},
+				{2, "Banana", 0.75},
+			},
+			expected: "INSERT INTO items (id, name, price) VALUES\n" +
+				"(1, 'Apple', 1.25),\n" +
+				"(2, 'Banana', 0.75);",
+		},
+		{
+			name: "values only mode",
+			opts: GenerateOptions{
+				ValuesOnly:    true,
+				NumberColumns: []string{"id", "price"},
+			},
+			dataRows: [][]any{
+				{1, "Apple", 1.25},
+				{2, "Banana", 0.75},
+			},
+			expected: "(1, 'Apple', 1.25),\n" +
+				"(2, 'Banana', 0.75)",
+		},
+		{
+			name: "column selection subset",
+			opts: GenerateOptions{
+				TableName:       "items",
+				SelectedColumns: []string{"name"},
+				BatchSize:       10,
+			},
+			dataRows: [][]any{
+				{1, "Apple", 1.25},
+			},
+			expected: "INSERT INTO items (name) VALUES\n" +
+				"('Apple');",
+		},
+		{
+			name: "zero rows written",
+			opts: GenerateOptions{
+				TableName: "items",
+			},
+			dataRows: nil,
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			bw, err := NewBatchWriter(&buf, headers, tt.opts)
+			if err != nil {
+				t.Fatalf("NewBatchWriter() error = %v", err)
+			}
+
+			for _, row := range tt.dataRows {
+				if err := bw.WriteRow(row); err != nil {
+					t.Errorf("WriteRow() error = %v", err)
+					break
+				}
+			}
+
+			if err := bw.Close(); err != nil {
+				t.Fatalf("Close() error = %v", err)
+			}
+
+			result := buf.String()
+			if result != tt.expected {
+				t.Errorf("output =\n%q\nwant:\n%q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestBatchWriter_TotalRows(t *testing.T) {
+	headers := []string{"id", "name"}
+	var buf bytes.Buffer
+	bw, err := NewBatchWriter(&buf, headers, GenerateOptions{TableName: "users"})
+	if err != nil {
+		t.Fatalf("NewBatchWriter() error = %v", err)
+	}
+
+	if bw.TotalRows() != 0 {
+		t.Errorf("expected 0 total rows, got %d", bw.TotalRows())
+	}
+
+	_ = bw.WriteRow([]any{1, "Alice"}) //nolint:errcheck // total rows counter test; write error tested separately
+	if bw.TotalRows() != 1 {
+		t.Errorf("expected 1 total rows, got %d", bw.TotalRows())
+	}
+
+	_ = bw.WriteRow([]any{2, "Bob"}) //nolint:errcheck // total rows counter test; write error tested separately
+	if bw.TotalRows() != 2 {
+		t.Errorf("expected 2 total rows, got %d", bw.TotalRows())
+	}
+
+	_ = bw.Close() //nolint:errcheck // total rows persistence test; close error tested separately
+	if bw.TotalRows() != 2 {
+		t.Errorf("expected 2 total rows after close, got %d", bw.TotalRows())
+	}
+}
+
+func TestBatchWriter_BufioFlush(t *testing.T) {
+	headers := []string{"id", "name"}
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+
+	bw, err := NewBatchWriter(bufWriter, headers, GenerateOptions{
+		TableName:     "users",
+		NumberColumns: []string{"id"},
+	})
+	if err != nil {
+		t.Fatalf("NewBatchWriter() error = %v", err)
+	}
+
+	if err := bw.WriteRow([]any{1, "Alice"}); err != nil {
+		t.Fatalf("WriteRow() error = %v", err)
+	}
+
+	// Close finalizes SQL without flushing the buffer
+	if err := bw.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	// Buffer flushing is caller's responsibility
+	if err := bufWriter.Flush(); err != nil {
+		t.Fatalf("bufWriter.Flush() error = %v", err)
+	}
+
+	expected := "INSERT INTO users (id, name) VALUES\n(1, 'Alice');"
+	if buf.String() != expected {
+		t.Errorf("buf.String() = %q, want %q", buf.String(), expected)
+	}
+}
+
+type flushErrorWriter struct {
+	err error
+}
+
+func (f *flushErrorWriter) Write(p []byte) (n int, err error) {
+	return len(p), nil
+}
+
+func (f *flushErrorWriter) Flush() error {
+	return f.err
+}
+
+func TestBatchWriter_FlushError(t *testing.T) {
+	headers := []string{"id", "name"}
+	expectedErr := errors.New("simulated flush failure")
+	fw := &flushErrorWriter{err: expectedErr}
+
+	bw, err := NewBatchWriter(fw, headers, GenerateOptions{TableName: "users"})
+	if err != nil {
+		t.Fatalf("NewBatchWriter() error = %v", err)
+	}
+
+	if err := bw.WriteRow([]any{1, "Alice"}); err != nil {
+		t.Fatalf("WriteRow() error = %v", err)
+	}
+
+	// Close should not flush; caller is responsible for flushing buffer.
+	if err := bw.Close(); err != nil {
+		t.Errorf("Close() error = %v, expected nil as Close does not flush", err)
+	}
+
+	// Calling Flush on writer directly returns the simulated error.
+	if err := fw.Flush(); !errors.Is(err, expectedErr) {
+		t.Errorf("fw.Flush() error = %v, want %v", err, expectedErr)
+	}
+}
+
+type errorWriter struct {
+	err error
+}
+
+func (e *errorWriter) Write(p []byte) (n int, err error) {
+	return 0, e.err
+}
+
+type errorAfterNWriter struct {
+	limit int
+	count int
+	err   error
+}
+
+func (e *errorAfterNWriter) Write(p []byte) (n int, err error) {
+	if e.count >= e.limit {
+		return 0, e.err
+	}
+	e.count++
+	return len(p), nil
+}
+
+func TestBatchWriter_WriteErrors(t *testing.T) {
+	headers := []string{"id", "name"}
+	expectedErr := errors.New("write failure")
+
+	t.Run("WriteRow error on initial write", func(t *testing.T) {
+		ew := &errorWriter{err: expectedErr}
+		bw, err := NewBatchWriter(ew, headers, GenerateOptions{TableName: "users"})
+		if err != nil {
+			t.Fatalf("NewBatchWriter() error = %v", err)
+		}
+
+		err = bw.WriteRow([]any{1, "Alice"})
+		if err == nil {
+			t.Error("expected error on WriteRow, got nil")
+		}
+	})
+
+	t.Run("WriteRow error in valuesOnly mode", func(t *testing.T) {
+		ew := &errorWriter{err: expectedErr}
+		bw, err := NewBatchWriter(ew, headers, GenerateOptions{ValuesOnly: true})
+		if err != nil {
+			t.Fatalf("NewBatchWriter() error = %v", err)
+		}
+
+		err = bw.WriteRow([]any{1, "Alice"})
+		if err == nil {
+			t.Error("expected error on WriteRow, got nil")
+		}
+	})
+
+	t.Run("Close error writing semicolon", func(t *testing.T) {
+		// Allows initial writes, then fails when writing semicolon in Close
+		ew := &errorAfterNWriter{limit: 2, err: expectedErr}
+		bw, err := NewBatchWriter(ew, headers, GenerateOptions{TableName: "users"})
+		if err != nil {
+			t.Fatalf("NewBatchWriter() error = %v", err)
+		}
+
+		_ = bw.WriteRow([]any{1, "Alice"}) // error is verified on Close
+
+		err = bw.Close()
+		if err == nil {
+			t.Error("expected error on Close writing semicolon, got nil")
+		}
+	})
+}
+
 func BenchmarkGenerateBatchSQL(b *testing.B) {
 	headers := []string{"id", "name", "age", "status"}
 	dataRows := make([][]any, 1000)
@@ -421,6 +718,6 @@ func BenchmarkGenerateBatchSQL(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		_ = GenerateBatchSQL(headers, dataRows, opts)
+		_ = GenerateBatchSQL(headers, dataRows, opts) //nolint:errcheck // benchmark execution result intentionally discarded
 	}
 }

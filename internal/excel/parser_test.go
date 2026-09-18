@@ -337,3 +337,247 @@ func TestIterateSheet(t *testing.T) {
 		}
 	})
 }
+
+func TestNormalizeRow(t *testing.T) {
+	tests := []struct {
+		name         string
+		rawRow       []string
+		numHeaders   int
+		replacements []Replacement
+		expected     []any
+	}{
+		{
+			name:         "exact length without replacements",
+			rawRow:       []string{"Alice", "30", "Paris"},
+			numHeaders:   3,
+			replacements: nil,
+			expected:     []any{"Alice", "30", "Paris"},
+		},
+		{
+			name:         "empty strings converted to nil",
+			rawRow:       []string{"Alice", "", "Paris"},
+			numHeaders:   3,
+			replacements: nil,
+			expected:     []any{"Alice", nil, "Paris"},
+		},
+		{
+			name:         "shorter raw row padded with nil",
+			rawRow:       []string{"Alice"},
+			numHeaders:   3,
+			replacements: nil,
+			expected:     []any{"Alice", nil, nil},
+		},
+		{
+			name:         "longer raw row truncated to numHeaders",
+			rawRow:       []string{"Alice", "30", "Paris", "extra"},
+			numHeaders:   3,
+			replacements: nil,
+			expected:     []any{"Alice", "30", "Paris"},
+		},
+		{
+			name:       "apply replacements",
+			rawRow:     []string{"N/A", "active", "NULL"},
+			numHeaders: 3,
+			replacements: []Replacement{
+				{Find: "N/A", Replace: "Unknown"},
+				{Find: "NULL", Replace: ""},
+			},
+			expected: []any{"Unknown", "active", nil},
+		},
+		{
+			name:       "chained replacements",
+			rawRow:     []string{"foo"},
+			numHeaders: 1,
+			replacements: []Replacement{
+				{Find: "foo", Replace: "bar"},
+				{Find: "bar", Replace: "baz"},
+			},
+			expected: []any{"baz"},
+		},
+		{
+			name:         "empty raw row with numHeaders",
+			rawRow:       []string{},
+			numHeaders:   2,
+			replacements: nil,
+			expected:     []any{nil, nil},
+		},
+		{
+			name:         "zero numHeaders",
+			rawRow:       []string{"foo", "bar"},
+			numHeaders:   0,
+			replacements: nil,
+			expected:     []any{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeRow(tc.rawRow, tc.numHeaders, tc.replacements)
+			if !slices.Equal(got, tc.expected) {
+				t.Errorf("normalizeRow() = %v, want %v", got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestFindAndReplace(t *testing.T) {
+	t.Run("nil input returns empty slice", func(t *testing.T) {
+		res := FindAndReplace(nil, "foo", "bar")
+		if res == nil || len(res) != 0 {
+			t.Errorf("expected empty non-nil slice, got %v", res)
+		}
+	})
+
+	t.Run("empty input returns empty slice", func(t *testing.T) {
+		input := [][]any{}
+		res := FindAndReplace(input, "foo", "bar")
+		if len(res) != 0 {
+			t.Errorf("expected 0 rows, got %d", len(res))
+		}
+	})
+
+	t.Run("replaces matching string and preserves non-matching", func(t *testing.T) {
+		input := [][]any{
+			{"hello", "world", 123},
+			{nil, "hello", true},
+		}
+		res := FindAndReplace(input, "hello", "hi")
+		if len(res) != 2 {
+			t.Fatalf("expected 2 rows, got %d", len(res))
+		}
+		if res[0][0] != "hi" {
+			t.Errorf("expected res[0][0] == 'hi', got %v", res[0][0])
+		}
+		if res[0][1] != "world" {
+			t.Errorf("expected res[0][1] == 'world', got %v", res[0][1])
+		}
+		if res[0][2] != 123 {
+			t.Errorf("expected res[0][2] == 123, got %v", res[0][2])
+		}
+		if res[1][0] != nil {
+			t.Errorf("expected res[1][0] == nil, got %v", res[1][0])
+		}
+		if res[1][1] != "hi" {
+			t.Errorf("expected res[1][1] == 'hi', got %v", res[1][1])
+		}
+		if res[1][2] != true {
+			t.Errorf("expected res[1][2] == true, got %v", res[1][2])
+		}
+	})
+
+	t.Run("replaces matching formatted number", func(t *testing.T) {
+		input := [][]any{
+			{100, "200"},
+		}
+		res := FindAndReplace(input, "100", "replaced")
+		if res[0][0] != "replaced" {
+			t.Errorf("expected 'replaced', got %v", res[0][0])
+		}
+		if res[0][1] != "200" {
+			t.Errorf("expected '200', got %v", res[0][1])
+		}
+	})
+}
+
+func TestStreamRows(t *testing.T) {
+	tempDir := t.TempDir()
+	testData := [][]string{
+		{"ID", "Name", "Status"},
+		{"1", "Alice", "pending"},
+		{"2", "Bob", ""},
+		{"3", "Charlie", "active"},
+	}
+	filePath := createTestExcelFile(t, tempDir, testData)
+
+	t.Run("successful streaming with normalization and replacements", func(t *testing.T) {
+		headers := []string{"ID", "Name", "Status"}
+		replacements := []Replacement{
+			{Find: "pending", Replace: "queued"},
+		}
+
+		var streamedRows [][]any
+		err := StreamRows(filePath, "Sheet1", headers, replacements, func(row []any) error {
+			streamedRows = append(streamedRows, row)
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("StreamRows failed: %v", err)
+		}
+
+		if len(streamedRows) != 3 {
+			t.Fatalf("expected 3 rows, got %d", len(streamedRows))
+		}
+
+		// Row 1: "1", "Alice", "queued" (replacement applied)
+		if streamedRows[0][0] != "1" || streamedRows[0][1] != "Alice" || streamedRows[0][2] != "queued" {
+			t.Errorf("unexpected row 0: %v", streamedRows[0])
+		}
+
+		// Row 2: "2", "Bob", nil (empty string normalized to nil)
+		if streamedRows[1][0] != "2" || streamedRows[1][1] != "Bob" || streamedRows[1][2] != nil {
+			t.Errorf("unexpected row 1: %v", streamedRows[1])
+		}
+
+		// Row 3: "3", "Charlie", "active"
+		if streamedRows[2][0] != "3" || streamedRows[2][1] != "Charlie" || streamedRows[2][2] != "active" {
+			t.Errorf("unexpected row 2: %v", streamedRows[2])
+		}
+	})
+
+	t.Run("streaming with row padding when raw row is shorter than headers", func(t *testing.T) {
+		headers := []string{"ID", "Name", "Status", "Extra"}
+		var streamedRows [][]any
+		err := StreamRows(filePath, "Sheet1", headers, nil, func(row []any) error {
+			streamedRows = append(streamedRows, row)
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("StreamRows failed: %v", err)
+		}
+
+		for i, row := range streamedRows {
+			if len(row) != 4 {
+				t.Errorf("row %d expected length 4, got %d", i, len(row))
+			}
+			if row[3] != nil {
+				t.Errorf("row %d expected nil at index 3, got %v", i, row[3])
+			}
+		}
+	})
+
+	t.Run("callback error terminates streaming", func(t *testing.T) {
+		headers := []string{"ID", "Name", "Status"}
+		count := 0
+		customErr := excelize.ErrSheetNotExist{SheetName: "test"}
+		err := StreamRows(filePath, "Sheet1", headers, nil, func(row []any) error {
+			count++
+			return customErr
+		})
+		if err == nil {
+			t.Fatal("expected error from callback, got nil")
+		}
+		if count != 1 {
+			t.Errorf("expected exactly 1 iteration before error, got %d", count)
+		}
+	})
+
+	t.Run("nonexistent file returns error", func(t *testing.T) {
+		headers := []string{"ID", "Name"}
+		err := StreamRows("nonexistent.xlsx", "Sheet1", headers, nil, func(row []any) error {
+			return nil
+		})
+		if err == nil {
+			t.Error("expected error for nonexistent file, got nil")
+		}
+	})
+
+	t.Run("nonexistent sheet returns error", func(t *testing.T) {
+		headers := []string{"ID", "Name"}
+		err := StreamRows(filePath, "NonExistentSheet", headers, nil, func(row []any) error {
+			return nil
+		})
+		if err == nil {
+			t.Error("expected error for nonexistent sheet, got nil")
+		}
+	})
+}

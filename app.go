@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -89,7 +90,7 @@ func (a *App) GenerateSQL(headers []string, dataRows [][]any, options SQLOptions
 
 // FindAndReplace replaces values in the data rows
 func (a *App) FindAndReplace(dataRows [][]any, findValue, replaceWith string) [][]any {
-	return sql.FindAndReplace(dataRows, findValue, replaceWith)
+	return excel.FindAndReplace(dataRows, findValue, replaceWith)
 }
 
 // CopyToClipboard copies text to the clipboard
@@ -101,9 +102,31 @@ func (a *App) CopyToClipboard(text string) error {
 }
 
 // Replacement defines a find-and-replace rule
-type Replacement struct {
-	Find    string `json:"find"`
-	Replace string `json:"replace"`
+type Replacement = excel.Replacement
+
+// ExportSQLStream streams data from an Excel sheet to an io.Writer using sql.BatchWriter.
+// This decouples SQL streaming from UI dialogs, enabling O(1) memory exports and direct testing.
+func ExportSQLStream(w io.Writer, filePath, sheetName string, headers []string, options SQLOptions, replacements []Replacement) error {
+	bw, err := sql.NewBatchWriter(w, headers, sql.GenerateOptions{
+		TableName:       options.TableName,
+		SelectedColumns: options.SelectedColumns,
+		NumberColumns:   options.NumberColumns,
+		BatchSize:       options.BatchSize,
+		ValuesOnly:      options.ValuesOnly,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to initialize batch writer: %w", err)
+	}
+
+	if err := excel.StreamRows(filePath, sheetName, headers, replacements, bw.WriteRow); err != nil {
+		return fmt.Errorf("streaming failed: %w", err)
+	}
+
+	if err := bw.Close(); err != nil {
+		return fmt.Errorf("failed to finalize SQL output: %w", err)
+	}
+
+	return nil
 }
 
 // GenerateAndSaveSQL streams data from Excel directly to a SQL file
@@ -137,101 +160,15 @@ func (a *App) GenerateAndSaveSQL(filePath, sheetName string, headers []string, o
 		return false, fmt.Errorf("failed to create output file: %w", err)
 	}
 	defer func() {
-		_ = outFile.Close()
+		_ = outFile.Close() // best-effort file cleanup on exit
 	}()
 
 	writer := bufio.NewWriter(outFile)
-
-	// Resolve column mapping and validation
-	colMap, err := sql.ResolveColumns(headers, options.SelectedColumns, options.NumberColumns)
-	if err != nil {
+	if err := ExportSQLStream(writer, filePath, sheetName, headers, options, replacements); err != nil {
 		return false, err
 	}
-
-	insertPrefix := sql.BuildInsertPrefix(options.TableName, colMap.ValidSelectedCols)
-	batchSize := max(0, options.BatchSize)
-
-	inBatchCount := 0
-	totalRows := 0
-
-	// Use the streaming iterator
-	err = excel.IterateSheet(filePath, sheetName, func(row []string) error {
-		// Apply replacements to raw strings first
-		for i := range row {
-			for _, r := range replacements {
-				if row[i] == r.Find {
-					row[i] = r.Replace
-				}
-			}
-		}
-
-		// Convert string row to interface row for the formatter
-		interfaceRow := make([]any, len(headers))
-		for i := range headers {
-			if i < len(row) && row[i] != "" {
-				interfaceRow[i] = row[i]
-			} else {
-				interfaceRow[i] = nil
-			}
-		}
-
-		if options.ValuesOnly {
-			if totalRows > 0 {
-				if _, err := writer.WriteString(",\n"); err != nil {
-					return err
-				}
-			}
-			valStr := sql.FormatRowSQLSelected(interfaceRow, colMap.ColIndices, headers, colMap.NumColSet)
-			if _, err := writer.WriteString(valStr); err != nil {
-				return err
-			}
-		} else {
-			if inBatchCount == 0 {
-				if totalRows > 0 {
-					if _, err := writer.WriteString("\n\n"); err != nil {
-						return err
-					}
-				}
-				if _, err := writer.WriteString(insertPrefix); err != nil {
-					return err
-				}
-			} else {
-				if _, err := writer.WriteString(",\n"); err != nil {
-					return err
-				}
-			}
-
-			valStr := sql.FormatRowSQLSelected(interfaceRow, colMap.ColIndices, headers, colMap.NumColSet)
-			if _, err := writer.WriteString(valStr); err != nil {
-				return err
-			}
-			inBatchCount++
-
-			if batchSize > 0 && inBatchCount == batchSize {
-				if _, err := writer.WriteString(";"); err != nil {
-					return err
-				}
-				inBatchCount = 0
-			}
-		}
-
-		totalRows++
-		return nil
-	})
-
-	if err != nil {
-		return false, fmt.Errorf("streaming failed: %w", err)
-	}
-
-	if !options.ValuesOnly && inBatchCount > 0 {
-		if _, err := writer.WriteString(";"); err != nil {
-			return false, err
-		}
-	}
-
 	if err := writer.Flush(); err != nil {
 		return false, fmt.Errorf("failed to flush buffer: %w", err)
 	}
-
 	return true, nil
 }
