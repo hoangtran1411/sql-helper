@@ -267,22 +267,3 @@ func FormatRowSQLSelected(row []any, colIndices []int, headers []string, numColS
 	builder.WriteByte(')')
 	return builder.String()
 }
-
-// FindAndReplace replaces values in the data rows
-func FindAndReplace(dataRows [][]any, findValue, replaceWith string) [][]any {
-	if dataRows == nil {
-		return make([][]any, 0)
-	}
-
-	for _, row := range dataRows {
-		for j, cell := range row {
-			// Convert to string to check value - simple robust check
-			// Optimization: could be type-specific but generic is safer for now
-			if fmt.Sprintf("%v", cell) == findValue {
-				row[j] = replaceWith
-			}
-		}
-	}
-
-	return dataRows
-}
