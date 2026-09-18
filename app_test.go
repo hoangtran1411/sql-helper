@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -104,6 +105,37 @@ func TestAppGenerateSQLEmptyData(t *testing.T) {
 	// Empty data should return empty string
 	if result != "" {
 		t.Errorf("GenerateSQL() with empty data should return empty string, got %q", result)
+	}
+}
+
+func TestAppFindAndReplace_ExcelDelegation(t *testing.T) {
+	app := NewApp()
+
+	input := [][]any{
+		{"apple", 100, nil},
+		{"banana", "apple", true},
+		{"", "cherry", false},
+	}
+
+	// Prepare identical input to verify app.FindAndReplace delegates cleanly to excel.FindAndReplace
+	expectedInput := [][]any{
+		{"apple", 100, nil},
+		{"banana", "apple", true},
+		{"", "cherry", false},
+	}
+
+	expected := excel.FindAndReplace(expectedInput, "apple", "orange")
+	result := app.FindAndReplace(input, "apple", "orange")
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("app.FindAndReplace delegation mismatch: got %v, want %v", result, expected)
+	}
+
+	if result[0][0] != "orange" || result[1][1] != "orange" {
+		t.Errorf("expected 'orange' at [0][0] and [1][1], got %v and %v", result[0][0], result[1][1])
+	}
+	if result[0][1] != 100 || result[0][2] != nil || result[1][0] != "banana" {
+		t.Errorf("non-target cells modified unexpectedly: %v", result)
 	}
 }
 

@@ -67,7 +67,7 @@ func GetPreview(filePath, sheetName string, limit int) (*SheetData, error) {
 			continue
 		}
 
-		interfaceRow := NormalizeRow(row, len(headers), nil)
+		interfaceRow := normalizeRow(row, len(headers), nil)
 		dataRows = append(dataRows, interfaceRow)
 		rowCount++
 	}
@@ -112,9 +112,9 @@ func IterateSheet(filePath, sheetName string, onRow func(row []string) error) er
 	return nil
 }
 
-// NormalizeRow normalizes a raw string slice into an interface row of length numHeaders,
+// normalizeRow normalizes a raw string slice into an interface row of length numHeaders,
 // applying any replacements and converting empty strings to nil.
-func NormalizeRow(rawRow []string, numHeaders int, replacements []Replacement) []any {
+func normalizeRow(rawRow []string, numHeaders int, replacements []Replacement) []any {
 	row := make([]any, numHeaders)
 	for j := range numHeaders {
 		if j < len(rawRow) {
@@ -154,7 +154,7 @@ func FindAndReplace(dataRows [][]any, findValue, replaceWith string) [][]any {
 // StreamRows streams normalized rows from an Excel sheet to a callback.
 func StreamRows(filePath, sheetName string, headers []string, replacements []Replacement, onRow func(row []any) error) error {
 	return IterateSheet(filePath, sheetName, func(rawRow []string) error {
-		normRow := NormalizeRow(rawRow, len(headers), replacements)
+		normRow := normalizeRow(rawRow, len(headers), replacements)
 		return onRow(normRow)
 	})
 }

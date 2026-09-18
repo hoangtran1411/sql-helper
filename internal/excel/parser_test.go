@@ -412,14 +412,9 @@ func TestNormalizeRow(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := NormalizeRow(tc.rawRow, tc.numHeaders, tc.replacements)
-			if len(got) != len(tc.expected) {
-				t.Fatalf("expected length %d, got %d", len(tc.expected), len(got))
-			}
-			for i := range got {
-				if got[i] != tc.expected[i] {
-					t.Errorf("at index %d: expected %v (%T), got %v (%T)", i, tc.expected[i], tc.expected[i], got[i], got[i])
-				}
+			got := normalizeRow(tc.rawRow, tc.numHeaders, tc.replacements)
+			if !slices.Equal(got, tc.expected) {
+				t.Errorf("normalizeRow() = %v, want %v", got, tc.expected)
 			}
 		})
 	}
