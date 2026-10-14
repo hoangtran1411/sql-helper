@@ -121,7 +121,7 @@ jobs:
           go build -ldflags "-s -w" -o build/bin/sql-helper .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: sql-helper-${{ matrix.os }}
           path: build/bin/
