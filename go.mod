@@ -3,7 +3,7 @@ module github.com/hoangtran1411/sql-helper
 go 1.27.0
 
 require (
-	github.com/wailsapp/wails/v3 v3.0.0-beta.34
+	github.com/wailsapp/wails/v3 v3.1.0-nightly.20261028
 	github.com/xuri/excelize/v2 v2.11.0
 )
 
